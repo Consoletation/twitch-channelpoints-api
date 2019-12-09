@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch Channel Points Event Hander
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Attempts to make the channel points API
 // @author       StealthCT <stealth@consoletation.uk>
 // @match        https://www.twitch.tv/popout/*/reward-queue
@@ -16,7 +16,7 @@ const rewards = {
         return true;
     },
     "Donate AUD": function(redemption) {
-        console.log(`We don't accept dollarydoos here, ${redemption.user}...`);
+        console.log(`DEBUG We don't accept dollarydoos here, ${redemption.user}...`);
         return false;
     }
 }
@@ -111,6 +111,11 @@ function redemptionHandler(redemption) {
                         var infoReward = pointsInfo[0].lastChild.textContent;
                         // NOTE: This method will skip existing rewards, due to load.
                         var infoUser = pointsInfo[1].lastChild.getElementsByTagName("H4")[0].textContent;
+                        // Response if exists
+                        var infoResponse;
+                        if (pointsInfo[2]) {
+                            infoResponse = pointsInfo[2].getElementsByTagName("H4")[0].textContent;
+                        }
 
                         // Action
                         var actionComplete = pointsResolve[0].firstChild;
@@ -120,6 +125,7 @@ function redemptionHandler(redemption) {
                             id: reportId,
                             user: infoUser,
                             reward: infoReward,
+                            response: infoResponse,
                             action: {
                                 complete: actionComplete,
                                 reject: actionReject
