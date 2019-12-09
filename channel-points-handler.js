@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch Channel Points Event Hander
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.3
 // @description  Attempts to make the channel points API
 // @author       StealthCT <stealth@consoletation.uk>
 // @match        https://www.twitch.tv/popout/*/reward-queue
@@ -13,12 +13,12 @@
 const rewards = {
     "Waste 1000 points": function(redemption) {
         console.log(`DEBUG Congrats ${redemption.user} for wasting 1000 points!`);
-        return true;
+        return Promise.resolve("Wasted 1000 points");
     },
     "Donate AUD": function(redemption) {
         console.log(`DEBUG We don't accept dollarydoos here, ${redemption.user}...`);
-        return false;
-    }
+        return Promise.reject("no AUD");
+    },
 }
 
 function getRewardNode() {
@@ -70,15 +70,17 @@ function redemptionHandler(redemption) {
     const redemptionMethod = rewards[redemption.reward];
     if (redemptionMethod) {
         // Attempt reward
-        if (redemptionMethod(redemption)) {
-            // Success
-            output = redemption.action.complete.click();
-            promiseResolve(output);
-        } else {
-            // Failure
-            output = redemption.action.reject.click();
-            promiseReject(output);
-        }
+        (redemptionMethod(redemption)).then(
+            data => {
+                // Success
+                redemption.action.complete.click();
+                promiseResolve(data);
+            }).catch(
+            err => {
+                // Failure
+                redemption.action.reject.click();
+                promiseReject(err);
+            });
     } else {
         // We don't handle this, do nothing to it, and reject promise
         promiseReject("unhandled");
