@@ -1,17 +1,15 @@
 // Configurable
 const rewards = {
     'Send Message': async function (redemption) {
-        console.log(
-            `DEBUG sending message: ${redemption.response} from ${redemption.userName}!`
-        )
+        log(`sending message: ${redemption.response} from ${redemption.userName}!`)
         return Promise.resolve(true)
     },
     pass: async function (redemption) {
-        console.log(`DEBUG Congrats ${redemption.userName}!`)
+        log(`Congrats ${redemption.userName}!`)
         return Promise.resolve(true)
     },
     fail: async function (redemption) {
-        console.log(`DEBUG this was made to fail, ${redemption.userName}...`)
+        log(`this was made to fail, ${redemption.userName}...`)
         return Promise.resolve(false)
     }
 }
@@ -22,7 +20,7 @@ const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
 
 // runs when the DOM is ready
 $().ready(() => {
-    console.log('Channel Points Handler Loaded. Now listening for rewards')
+    log('Channel Points Handler Loaded. Looking for rewards...')
     // get the reward container
     ctPointsContainerObserver.observe(document.body, {
         childList: true,
@@ -47,9 +45,8 @@ function findRewardContainer (mutations) {
                         .firstChild
                         .firstChild
                 if (rewardContainer.className.includes('reward-queue-body-container')) {
-                    console.log("ctPoints: Rewards container found!", rewardContainer)
+                    log("Rewards container found! Listening for reward events...")
                     ctPointsContainerObserver.disconnect()
-                    console.log("ctPoints: Listening for reward events")
                     ctPointsRewardObserver.observe(rewardContainer, {
                         childList: true,
                         subtree: true,
@@ -80,7 +77,7 @@ function filterDOMInsertionEvents (mutations) {
 // used handle the redemption event, accepts jquery object
 async function handleRedemption ($redemptionContainer) {
     const redemptionData = await extractAllData($redemptionContainer)
-    console.log(redemptionData)
+    log("DEBUG redemptionData", redemptionData)
     try {
         const result = await rewards[redemptionData.rewardName](redemptionData)
         if (result) {
@@ -186,4 +183,11 @@ function extractActionButtons ($redemptionContainer) {
         resolve: $buttons[0],
         reject: $buttons[1]
     }
+}
+
+function log () {
+    const prefix = "[ctPoints]"
+    const args = Array.prototype.slice.call(arguments);
+    args.unshift('%c' + prefix, 'background: #222; color: #bada55');
+    console.log.apply(console, args);
 }
