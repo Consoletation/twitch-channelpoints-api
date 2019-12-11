@@ -31,7 +31,9 @@ $().ready(() => {
 
 // find DOM events we're interested in
 function filterDOMInsertionEvents (event) {
-    const $redemptionContainer = $(event.target).find('.redemption-card__card-body')
+    const $redemptionContainer = $(event.target).find(
+        '.redemption-card__card-body'
+    )
     // check if we found a redemption card
     if ($redemptionContainer.length > 0) {
         // we have a redemtpion so now handle it
