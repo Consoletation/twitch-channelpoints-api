@@ -79,7 +79,7 @@ function filterDOMInsertionEvents (mutations) {
 
 // used handle the redemption event, accepts jquery object
 async function handleRedemption ($redemptionContainer) {
-    const redemptionData = extractAllData($redemptionContainer)
+    const redemptionData = await extractAllData($redemptionContainer)
     console.log(redemptionData)
     try {
         const result = await rewards[redemptionData.rewardName](redemptionData)
@@ -89,14 +89,15 @@ async function handleRedemption ($redemptionContainer) {
             redemptionData.actions.reject.click()
         }
     } catch (e) {
-        // don't do anything with failed redemptions (we might not know about them)
+        // don't do anything with unhandled redemptions
         console.error(e.message)
     }
 }
 
 // pull everything off the DOM and return an object
-function extractAllData ($redemptionContainer) {
-    const userName = extractUsername($redemptionContainer)
+async function extractAllData ($redemptionContainer) {
+    let userName = extractUsername($redemptionContainer)
+    if (!userName) userName = await extractUsernameAsync($redemptionContainer)
     const rewardName = extractRewardName($redemptionContainer)
     const response = extractResponse($redemptionContainer)
     const reportId = extractId($redemptionContainer)
@@ -116,6 +117,38 @@ function extractUsername ($redemptionContainer) {
     const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)')
     const userName = $rewardUserSibling.siblings('div').find('h4').html()
     return userName
+}
+
+function extractUsernameAsync ($redemptionContainer) {
+    let promiseResolve, promiseReject
+    const promise = new Promise(function(resolve, reject) {
+        promiseResolve = resolve
+        promiseReject = reject
+    })
+    const userObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (!mutation.addedNodes) return
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeName === 'H4') {
+                    // We got a username
+                    userObserver.disconnect()
+                    promiseResolve(node.textContent) // return username
+                }
+            })
+        })
+    })
+    // start with the text "USER" and find its div sibling
+    const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)')
+    const userDiv = $rewardUserSibling.siblings('div')[0]
+    // Observe the div until we find an h4 element containing the username
+    userObserver.observe(userDiv, {
+                        childList: true,
+                        subtree: false,
+                        attributes: false,
+                        chatacterData: false
+    })
+    setTimeout(() => { promiseReject("Could not get username"); }, 3000);
+    return promise
 }
 
 function extractRewardName ($redemptionContainer) {
