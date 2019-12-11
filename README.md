@@ -3,7 +3,7 @@
 ## Install web-ext
 Use `npm install --global web-ext` to get the web-ext helper
 Modify your config variables inside package.json under "webExt"
-Example: 
+Example:
 ```
   "webExt": {
     "verbose": true,
