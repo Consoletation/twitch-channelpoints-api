@@ -112,9 +112,9 @@ function extractAllData ($redemptionContainer) {
 }
 
 function extractUsername ($redemptionContainer) {
-    // start by finding the chat badges, as they are a good anchor for username
-    const $chatBadges = $redemptionContainer.find('img.chat-badge')
-    const userName = $chatBadges.siblings('h4').html()
+    // start with the text "USER" and find its div sibling with an h4 descendant
+    const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)')
+    const userName = $rewardUserSibling.siblings('div').find('h4').html()
     return userName
 }
 
