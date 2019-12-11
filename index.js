@@ -1,16 +1,17 @@
 // Configurable
 const rewards = {
-    'Send Message': async function (redemption) {
+    'Example Response': async function (redemption) {
+        // An example reward that will log the response
         log(`sending message: ${redemption.response} from ${redemption.userName}!`)
-        return Promise.resolve(true)
     },
-    pass: async function (redemption) {
+    'Example Success': async function (redemption) {
+        // An example reward that will always succeed
         log(`Congrats ${redemption.userName}!`)
-        return Promise.resolve(true)
     },
-    fail: async function (redemption) {
+    'Example Fail': async function (redemption) {
+        // An example reward that will always fail
         log(`this was made to fail, ${redemption.userName}...`)
-        return Promise.resolve(false)
+        throw Error('Purposefully failing reward')
     }
 }
 
@@ -79,12 +80,15 @@ async function handleRedemption ($redemptionContainer) {
     const redemptionData = await extractAllData($redemptionContainer)
     log("DEBUG redemptionData", redemptionData)
     try {
-        const result = await rewards[redemptionData.rewardName](redemptionData)
-        if (result) {
-            redemptionData.actions.resolve.click()
-        } else {
-            redemptionData.actions.reject.click()
-        }
+        rewards[redemptionData.rewardName](redemptionData).then(
+            () => {
+                redemptionData.actions.resolve.click()
+            }
+        ).catch(
+            err => {
+                redemptionData.actions.reject.click()
+            }
+        )
     } catch (e) {
         // don't do anything with unhandled redemptions
         console.error(e.message)
