@@ -37,20 +37,16 @@ function findRewardContainer (mutations) {
         if (!mutation.addedNodes) return
         mutation.addedNodes.forEach(function(node) {
             if (node.className.includes('simplebar-scroll-content')) {
-                const wrap = node.getElementsByClassName('simplebar-content')[0]
-                const view = wrap.getElementsByClassName('reward-queue-view')[0]
-                if (!view) return // No reward view here
-                const queue = view.getElementsByClassName('reward-queue-body')[0]
-                if (queue.className.includes('reward-queue-body')) {
-                    log("Rewards container found! Listening for reward events...")
-                    ctPointsContainerObserver.disconnect()
-                    ctPointsRewardObserver.observe(queue, {
-                        childList: true,
-                        subtree: true,
-                        attributes: false,
-                        chatacterData: false
-                    })
-                }
+                const queue = $(node).find('.reward-queue-body')[0]
+                if (!queue) return // No reward queue here
+                log("Rewards container found! Listening for reward events...")
+                ctPointsContainerObserver.disconnect()
+                ctPointsRewardObserver.observe(queue, {
+                    childList: true,
+                    subtree: true,
+                    attributes: false,
+                    chatacterData: false
+                })
             }
         })
     })
