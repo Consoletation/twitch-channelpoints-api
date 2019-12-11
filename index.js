@@ -1,3 +1,4 @@
+// Configurable
 const rewards = {
     'Send Message': async function (redemption) {
         console.log(
@@ -15,30 +16,65 @@ const rewards = {
     }
 }
 
+// Application
+const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
+const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
+
 // runs when the DOM is ready
 $().ready(() => {
     console.log('Channel Points Handler Loaded. Now listening for rewards')
     // get the reward container
-    const $rewardContainer = $(document)
-        .find('.reward-queue-body')
-        .find('.simplebar-scroll-content')
-
-    // listen for DOM insertion and only react to redemptions
-    $rewardContainer.bind('DOMNodeInserted', event =>
-        filterDOMInsertionEvents(event)
-    )
+    ctPointsContainerObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false,
+        characterData: false
+    })
 })
 
+// find reward container from mutation events
+function findRewardContainer (mutations) {
+    mutations.forEach(function(mutation) {
+        if (!mutation.addedNodes) return
+        mutation.addedNodes.forEach(function(node) {
+            if (node.className.includes('simplebar-scroll-content')) {
+                const wrap = node.getElementsByClassName('simplebar-content')[0]
+                const view = wrap.getElementsByClassName('reward-queue-view')[0]
+                if (!view) return // No reward view here
+                const body = view.getElementsByClassName('reward-queue-body')[0].childNodes[0]
+                var rewardContainer = body.getElementsByClassName('simplebar-scroll-content')[0]
+                        .firstChild
+                        .firstChild
+                        .firstChild
+                if (rewardContainer.className.includes('reward-queue-body-container')) {
+                    console.log("ctPoints: Rewards container found!", rewardContainer)
+                    ctPointsContainerObserver.disconnect()
+                    console.log("ctPoints: Listening for reward events")
+                    ctPointsRewardObserver.observe(rewardContainer, {
+                        childList: true,
+                        subtree: true,
+                        attributes: false,
+                        chatacterData: false
+                    })
+                }
+            }
+        })
+    })
+}
+
 // find DOM events we're interested in
-function filterDOMInsertionEvents (event) {
-    const $redemptionContainer = $(event.target).find(
-        '.redemption-card__card-body'
-    )
-    // check if we found a redemption card
-    if ($redemptionContainer.length > 0) {
-        // we have a redemtpion so now handle it
-        handleRedemption($redemptionContainer)
-    }
+function filterDOMInsertionEvents (mutations) {
+    mutations.forEach(function(mutation) {
+        if (!mutation.addedNodes) return
+        mutation.addedNodes.forEach(function(node) {
+            const $redemptionContainer = $(node).find('.redemption-card__card-body')
+            // check if we found a redemption card
+            if ($redemptionContainer.length > 0) {
+                // we have a redemtpion so now handle it
+                handleRedemption($redemptionContainer)
+            }
+        })
+    })
 }
 
 // used handle the redemption event, accepts jquery object
