@@ -40,15 +40,11 @@ function findRewardContainer (mutations) {
                 const wrap = node.getElementsByClassName('simplebar-content')[0]
                 const view = wrap.getElementsByClassName('reward-queue-view')[0]
                 if (!view) return // No reward view here
-                const body = view.getElementsByClassName('reward-queue-body')[0].childNodes[0]
-                var rewardContainer = body.getElementsByClassName('simplebar-scroll-content')[0]
-                        .firstChild
-                        .firstChild
-                        .firstChild
-                if (rewardContainer.className.includes('reward-queue-body-container')) {
+                const queue = view.getElementsByClassName('reward-queue-body')[0]
+                if (queue.className.includes('reward-queue-body')) {
                     log("Rewards container found! Listening for reward events...")
                     ctPointsContainerObserver.disconnect()
-                    ctPointsRewardObserver.observe(rewardContainer, {
+                    ctPointsRewardObserver.observe(queue, {
                         childList: true,
                         subtree: true,
                         attributes: false,
