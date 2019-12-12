@@ -26,6 +26,7 @@ const rewards = {
 // Application
 const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
 const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
+let handledRewards = new Array()
 
 // runs when the DOM is ready
 $().ready(() => {
@@ -78,7 +79,13 @@ function filterDOMInsertionEvents (mutations) {
 // used handle the redemption event, accepts jquery object
 async function handleRedemption ($redemptionContainer) {
     const redemptionData = await extractAllData($redemptionContainer)
-    log("DEBUG redemptionData", redemptionData)
+    if (handledRewards.includes(redemptionData.reportId)) {
+        log("Reward", redemptionData.reportId, "already handled, skipping")
+        return
+    } else {
+        log("DEBUG redemptionData", redemptionData)
+        handledRewards.push(redemptionData.reportId)
+    }
     const rewardFunction = rewards[redemptionData.rewardName]
     if (rewardFunction) {
         try {
