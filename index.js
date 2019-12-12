@@ -2,16 +2,24 @@
 const rewards = {
     'Example Response': async function (redemption) {
         // An example reward that will log the response
-        log(`sending message: ${redemption.response} from ${redemption.userName}!`)
+        return {
+            success: true,
+            message: `sending message: ${redemption.response} from ${redemption.userName}!`
+        }
     },
     'Example Success': async function (redemption) {
         // An example reward that will always succeed
-        log(`Congrats ${redemption.userName}!`)
+        return {
+            success: true,
+            message: `Congrats ${redemption.userName}!`
+        }
     },
     'Example Fail': async function (redemption) {
         // An example reward that will always fail
-        log(`this was made to fail, ${redemption.userName}...`)
-        throw Error('Purposefully failing reward')
+        return {
+            success: false,
+            message: `this was made to fail, ${redemption.userName}...`
+        }
     }
 }
 
@@ -71,19 +79,25 @@ function filterDOMInsertionEvents (mutations) {
 async function handleRedemption ($redemptionContainer) {
     const redemptionData = await extractAllData($redemptionContainer)
     log("DEBUG redemptionData", redemptionData)
-    try {
-        rewards[redemptionData.rewardName](redemptionData).then(
-            () => {
+    const rewardFunction = rewards[redemptionData.rewardName]
+    if (rewardFunction) {
+        try {
+            const result = await rewards[redemptionData.rewardName](redemptionData)
+            if (result.success) {
+                log(result.message)
                 redemptionData.actions.resolve.click()
-            }
-        ).catch(
-            err => {
+            } else {
+                log(result.message)
                 redemptionData.actions.reject.click()
             }
-        )
-    } catch (e) {
+        } catch (e) {
+            // unexpected reward failure!
+            console.error(e.message)
+            redemptionData.actions.reject.click()
+        }
+    } else {
         // don't do anything with unhandled redemptions
-        console.error(e.message)
+        log("Received unhandled reward:", redemptionData.rewardName + ", ignoring")
     }
 }
 
