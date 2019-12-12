@@ -1,66 +1,117 @@
+// Configurable
 const rewards = {
-    'Send Message': async function (redemption) {
-        console.log(
-            `DEBUG sending message: ${redemption.response} from ${redemption.userName}!`
-        )
-        return Promise.resolve(true)
+    'Example Response': async function (redemption) {
+        // An example reward that will log the response
+        return {
+            success: true,
+            message: `sending message: ${redemption.response} from ${redemption.userName}!`
+        }
     },
-    pass: async function (redemption) {
-        console.log(`DEBUG Congrats ${redemption.userName}!`)
-        return Promise.resolve(true)
+    'Example Success': async function (redemption) {
+        // An example reward that will always succeed
+        return {
+            success: true,
+            message: `Congrats ${redemption.userName}!`
+        }
     },
-    fail: async function (redemption) {
-        console.log(`DEBUG this was made to fail, ${redemption.userName}...`)
-        return Promise.resolve(false)
+    'Example Fail': async function (redemption) {
+        // An example reward that will always fail
+        return {
+            success: false,
+            message: `this was made to fail, ${redemption.userName}...`
+        }
     }
 }
 
+// Application
+const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
+const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
+let handledRewards = new Array()
+
 // runs when the DOM is ready
 $().ready(() => {
-    console.log('Channel Points Handler Loaded. Now listening for rewards')
+    log('Channel Points Handler Loaded. Looking for rewards...')
     // get the reward container
-    const $rewardContainer = $(document)
-        .find('.reward-queue-body')
-        .find('.simplebar-scroll-content')
-
-    // listen for DOM insertion and only react to redemptions
-    $rewardContainer.bind('DOMNodeInserted', event =>
-        filterDOMInsertionEvents(event)
-    )
+    ctPointsContainerObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false,
+        characterData: false
+    })
 })
 
+// find reward container from mutation events
+function findRewardContainer (mutations) {
+    mutations.forEach(function(mutation) {
+        if (!mutation.addedNodes) return
+        mutation.addedNodes.forEach(function(node) {
+            if (node.className.includes('simplebar-scroll-content')) {
+                const queue = $(node).find('.reward-queue-body')[0]
+                if (!queue) return // No reward queue here
+                log("Rewards container found! Listening for reward events...")
+                ctPointsContainerObserver.disconnect()
+                ctPointsRewardObserver.observe(queue, {
+                    childList: true,
+                    subtree: true,
+                    attributes: false,
+                    chatacterData: false
+                })
+            }
+        })
+    })
+}
+
 // find DOM events we're interested in
-function filterDOMInsertionEvents (event) {
-    const $redemptionContainer = $(event.target).find(
-        '.redemption-card__card-body'
-    )
-    // check if we found a redemption card
-    if ($redemptionContainer.length > 0) {
-        // we have a redemtpion so now handle it
-        handleRedemption($redemptionContainer)
-    }
+function filterDOMInsertionEvents (mutations) {
+    mutations.forEach(function(mutation) {
+        if (!mutation.addedNodes) return
+        mutation.addedNodes.forEach(function(node) {
+            const $redemptionContainer = $(node).find('.redemption-card__card-body')
+            // check if we found a redemption card
+            if ($redemptionContainer.length > 0) {
+                // we have a redemtpion so now handle it
+                handleRedemption($redemptionContainer)
+            }
+        })
+    })
 }
 
 // used handle the redemption event, accepts jquery object
 async function handleRedemption ($redemptionContainer) {
-    const redemptionData = extractAllData($redemptionContainer)
-    console.log(redemptionData)
-    try {
-        const result = await rewards[redemptionData.rewardName](redemptionData)
-        if (result) {
-            redemptionData.actions.resolve.click()
-        } else {
+    const redemptionData = await extractAllData($redemptionContainer)
+    if (handledRewards.includes(redemptionData.reportId)) {
+        log("Reward", redemptionData.reportId, "already handled, skipping")
+        return
+    } else {
+        log("DEBUG redemptionData", redemptionData)
+        handledRewards.push(redemptionData.reportId)
+    }
+    const rewardFunction = rewards[redemptionData.rewardName]
+    if (rewardFunction) {
+        try {
+            const result = await rewards[redemptionData.rewardName](redemptionData)
+            if (result.success) {
+                log(result.message)
+                redemptionData.actions.resolve.click()
+            } else {
+                log(result.message)
+                redemptionData.actions.reject.click()
+            }
+        } catch (e) {
+            // unexpected reward failure!
+            console.error(e.message)
             redemptionData.actions.reject.click()
         }
-    } catch (e) {
-        // don't do anything with failed redemptions (we might not know about them)
-        console.error(e.message)
+    } else {
+        // don't do anything with unhandled redemptions
+        log("Received unhandled reward:", redemptionData.rewardName + ", ignoring")
     }
 }
 
 // pull everything off the DOM and return an object
-function extractAllData ($redemptionContainer) {
-    const userName = extractUsername($redemptionContainer)
+async function extractAllData ($redemptionContainer) {
+    let userName = extractUsername($redemptionContainer)
+    if (!userName) userName = await extractUsernameAsync($redemptionContainer)
     const rewardName = extractRewardName($redemptionContainer)
     const response = extractResponse($redemptionContainer)
     const reportId = extractId($redemptionContainer)
@@ -76,10 +127,42 @@ function extractAllData ($redemptionContainer) {
 }
 
 function extractUsername ($redemptionContainer) {
-    // start by finding the chat badges, as they are a good anchor for username
-    const $chatBadges = $redemptionContainer.find('img.chat-badge')
-    const userName = $chatBadges.siblings('h4').html()
+    // start with the text "USER" and find its div sibling with an h4 descendant
+    const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)')
+    const userName = $rewardUserSibling.siblings('div').find('h4').html()
     return userName
+}
+
+function extractUsernameAsync ($redemptionContainer) {
+    let promiseResolve, promiseReject
+    const promise = new Promise(function(resolve, reject) {
+        promiseResolve = resolve
+        promiseReject = reject
+    })
+    const userObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (!mutation.addedNodes) return
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeName === 'H4') {
+                    // We got a username
+                    userObserver.disconnect()
+                    promiseResolve(node.textContent) // return username
+                }
+            })
+        })
+    })
+    // start with the text "USER" and find its div sibling
+    const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)')
+    const userDiv = $rewardUserSibling.siblings('div')[0]
+    // Observe the div until we find an h4 element containing the username
+    userObserver.observe(userDiv, {
+                        childList: true,
+                        subtree: false,
+                        attributes: false,
+                        chatacterData: false
+    })
+    setTimeout(() => { promiseReject("Could not get username"); }, 3000);
+    return promise
 }
 
 function extractRewardName ($redemptionContainer) {
@@ -117,4 +200,11 @@ function extractActionButtons ($redemptionContainer) {
         resolve: $buttons[0],
         reject: $buttons[1]
     }
+}
+
+function log () {
+    const prefix = "[ctPoints]"
+    const args = Array.prototype.slice.call(arguments);
+    args.unshift('%c' + prefix, 'background: #222; color: #bada55');
+    console.log.apply(console, args);
 }
