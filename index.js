@@ -1,79 +1,148 @@
 // Configurable
 const rewards = {
-    'Example Response': async function (redemption) {
-        // An example reward that will log the response
-        return {
-            success: true,
-            message: `sending message: ${redemption.response} from ${redemption.userName}!`
-        }
-    },
-    'Example Success': async function (redemption) {
-        // An example reward that will always succeed
-        return {
-            success: true,
-            message: `Congrats ${redemption.userName}!`
-        }
-    },
-    'Example Fail': async function (redemption) {
-        // An example reward that will always fail
-        return {
-            success: false,
-            message: `this was made to fail, ${redemption.userName}...`
-        }
-    },
-    'Example OBS': async function(redemption) {
-        const suffix = ' (example)'
+    'Take On Me': {
+        suffix: ' (takeonme)',
+        cooldownInSeconds: 600,
+        execute: async function (redemption) {
+            try {
+                const initialScene = await obs.client.send('GetCurrentScene')
+                // change to the scene
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name + this.suffix
+                })
 
-        const obsPromise = new Promise(function(resolve, reject) {
-            obs.client.send('GetCurrentScene').then(function(initialScene) {
-                obs.client.send('SetCurrentScene', {"scene-name": initialScene.name + suffix}).delay(5000).then(
-                    () => {
-                        obs.client.send('SetCurrentScene', {"scene-name": initialScene.name})
-                            .then(resolve)
-                            .catch(reject)
-                    }).catch(reject)
-            }).catch(reject)
-        })
+                await delay(13000)
+                // back to original scene
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name
+                })
 
-        return obsPromise.then(
-            () => {
                 return {
                     success: true,
-                    message: "We did the OBS thing!"
+                    message: 'We did the OBS thing!'
                 }
-            }
-        ).catch(
-            err => {
+            } catch (e) {
                 return {
                     success: false,
-                    message: err
+                    message: e.error
                 }
             }
-        )
+        }
+    },
+    'Shutup Noom': {
+        suffix: ' (slap)',
+        cooldownInSeconds: 300,
+        execute: async function (redemption) {
+            try {
+                const initialScene = await obs.client.send('GetCurrentScene')
+                // change to the scene
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name + this.suffix
+                })
+
+                await delay(2500)
+                // back to original scene
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name
+                })
+
+                return {
+                    success: true,
+                    message: 'We did the OBS thing!'
+                }
+            } catch (e) {
+                return {
+                    success: false,
+                    message: e.error
+                }
+            }
+        }
+    },
+    'Plant a Bomb': {
+        suffix: ' (explode)',
+        cooldownInSeconds: 600,
+        execute: async function (redemption) {
+            try {
+                const initialScene = await obs.client.send('GetCurrentScene')
+                // change to the scene
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name + this.suffix
+                })
+
+                // set up the scene items
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'WEBCAM',
+                    visible: true
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'smokebomb',
+                    visible: false
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'explosion',
+                    visible: false
+                })
+
+                // show explosion and hide cam
+                await delay(2500)
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'explosion',
+                    visible: true
+                })
+                await delay(500)
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'smokebomb',
+                    visible: true
+                })
+                await delay(800)
+                // hide cam
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'WEBCAM',
+                    visible: false
+                })
+
+                // back to original scene
+                await delay(9000)
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name
+                })
+                return {
+                    success: true,
+                    message: 'We did the OBS thing!'
+                }
+            } catch (e) {
+                return {
+                    success: false,
+                    message: e.error
+                }
+            }
+        }
     }
 }
 
-let obs = {
+const obs = {
     enabled: true,
-    address: 'localhost:4444',
-    password: 'irish'
+    address: 'localhost:1234',
+    password: 'noom1234'
 }
 
 // Application
 const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
 const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
-let handledRewards = new Array()
+const handledRewards = []
+const cooldowns = []
 
 // OBS Integration
 if (obs.enabled) {
-    log("OBS integration enabled. Attempting connection...")
+    log('OBS integration enabled. Attempting connection...')
     obs.client = new OBSWebSocket()
-    obs.client.connect({ address: obs.address, password: obs.password }).then(
-        out => {
-            log("OBS client connected!", out)
-        }).catch(
-        err => {
-            log("OBS client failed to connect!", err)
+    obs.client
+        .connect({ address: obs.address, password: obs.password })
+        .then(out => {
+            log('OBS client connected!', out)
+        })
+        .catch(err => {
+            log('OBS client failed to connect!', err)
         })
 }
 
@@ -91,13 +160,13 @@ $().ready(() => {
 
 // find reward container from mutation events
 function findRewardContainer (mutations) {
-    mutations.forEach(function(mutation) {
+    mutations.forEach(function (mutation) {
         if (!mutation.addedNodes) return
-        mutation.addedNodes.forEach(function(node) {
+        mutation.addedNodes.forEach(function (node) {
             if (node.className.includes('simplebar-scroll-content')) {
                 const queue = $(node).find('.reward-queue-body')[0]
                 if (!queue) return // No reward queue here
-                log("Rewards container found! Listening for reward events...")
+                log('Rewards container found! Listening for reward events...')
                 ctPointsContainerObserver.disconnect()
                 ctPointsRewardObserver.observe(queue, {
                     childList: true,
@@ -112,10 +181,12 @@ function findRewardContainer (mutations) {
 
 // find DOM events we're interested in
 function filterDOMInsertionEvents (mutations) {
-    mutations.forEach(function(mutation) {
+    mutations.forEach(function (mutation) {
         if (!mutation.addedNodes) return
-        mutation.addedNodes.forEach(function(node) {
-            const $redemptionContainer = $(node).find('.redemption-card__card-body')
+        mutation.addedNodes.forEach(function (node) {
+            const $redemptionContainer = $(node).find(
+                '.redemption-card__card-body'
+            )
             // check if we found a redemption card
             if ($redemptionContainer.length > 0) {
                 // we have a redemtpion so now handle it
@@ -129,31 +200,75 @@ function filterDOMInsertionEvents (mutations) {
 async function handleRedemption ($redemptionContainer) {
     const redemptionData = await extractAllData($redemptionContainer)
     if (handledRewards.includes(redemptionData.reportId)) {
-        log("Reward", redemptionData.reportId, "already handled, skipping")
+        log('Reward', redemptionData.reportId, 'already handled, skipping')
         return
     } else {
-        log("DEBUG redemptionData", redemptionData)
+        log('DEBUG redemptionData', redemptionData)
         handledRewards.push(redemptionData.reportId)
     }
     const rewardFunction = rewards[redemptionData.rewardName]
     if (rewardFunction) {
         try {
-            const result = await rewards[redemptionData.rewardName](redemptionData)
+            // check if its on cooldown
+            if (cooldowns.indexOf(redemptionData.rewardName) >= 0) {
+                log(
+                    'Reward',
+                    redemptionData.rewardName,
+                    'is on cooldown, rejecting'
+                )
+                redemptionData.actions.reject.click()
+                return
+            } else {
+                // immediately add to cooldown
+                addToCooldown(redemptionData)
+            }
+
+            // execute the reward function
+            const result = await rewards[redemptionData.rewardName].execute(
+                redemptionData
+            )
             if (result.success) {
-                log(result.message)
+                log('accepting: ' + result.message)
                 redemptionData.actions.resolve.click()
             } else {
-                log(result.message)
+                log('rejecting: ' + result.message)
+                // need to remove it from the cooldowns because it didn't actually run
+                removeFromCooldown(redemptionData)
                 redemptionData.actions.reject.click()
             }
         } catch (e) {
             // unexpected reward failure!
             console.error(e.message)
+            // need to remove it from the cooldowns because it didn't actually run
+            removeFromCooldown(redemptionData)
             redemptionData.actions.reject.click()
         }
     } else {
         // don't do anything with unhandled redemptions
-        log("Received unhandled reward:", redemptionData.rewardName + ", ignoring")
+        log(
+            'Received unhandled reward:',
+            redemptionData.rewardName + ', ignoring'
+        )
+    }
+}
+
+function addToCooldown (redemptionData) {
+    const reward = rewards[redemptionData.rewardName]
+    const name = redemptionData.rewardName
+    const cooldown = reward.cooldownInSeconds
+    cooldowns.push(name)
+    setTimeout(() => {
+        removeFromCooldown(redemptionData)
+    }, cooldown * 1000)
+    log('Added ', name + ' to cooldowns')
+}
+
+function removeFromCooldown (redemptionData) {
+    const name = redemptionData.rewardName
+    const index = cooldowns.indexOf(name)
+    if (index >= 0) {
+        cooldowns.splice(index, 1)
+        log('Removed ', name + ' from cooldowns')
     }
 }
 
@@ -178,20 +293,23 @@ async function extractAllData ($redemptionContainer) {
 function extractUsername ($redemptionContainer) {
     // start with the text "USER" and find its div sibling with an h4 descendant
     const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)')
-    const userName = $rewardUserSibling.siblings('div').find('h4').html()
+    const userName = $rewardUserSibling
+        .siblings('div')
+        .find('h4')
+        .html()
     return userName
 }
 
 function extractUsernameAsync ($redemptionContainer) {
     let promiseResolve, promiseReject
-    const promise = new Promise(function(resolve, reject) {
+    const promise = new Promise(function (resolve, reject) {
         promiseResolve = resolve
         promiseReject = reject
     })
-    const userObserver = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
+    const userObserver = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
             if (!mutation.addedNodes) return
-            mutation.addedNodes.forEach(function(node) {
+            mutation.addedNodes.forEach(function (node) {
                 if (node.nodeName === 'H4') {
                     // We got a username
                     userObserver.disconnect()
@@ -205,12 +323,14 @@ function extractUsernameAsync ($redemptionContainer) {
     const userDiv = $rewardUserSibling.siblings('div')[0]
     // Observe the div until we find an h4 element containing the username
     userObserver.observe(userDiv, {
-                        childList: true,
-                        subtree: false,
-                        attributes: false,
-                        chatacterData: false
+        childList: true,
+        subtree: false,
+        attributes: false,
+        chatacterData: false
     })
-    setTimeout(() => { promiseReject("Could not get username"); }, 3000);
+    setTimeout(() => {
+        promiseReject('Could not get username')
+    }, 3000)
     return promise
 }
 
@@ -252,20 +372,20 @@ function extractActionButtons ($redemptionContainer) {
 }
 
 function log () {
-    const prefix = "[ctPoints]"
-    const args = Array.prototype.slice.call(arguments);
-    args.unshift('%c' + prefix, 'background: #222; color: #bada55');
-    console.log.apply(console, args);
+    const prefix = '[ctPoints]'
+    const args = Array.prototype.slice.call(arguments)
+    args.unshift('%c' + prefix, 'background: #222; color: #bada55')
+    console.log.apply(console, args)
 }
 
-function delay(t, v) {
-    return new Promise(function(resolve) {
-         setTimeout(resolve.bind(null, v), t)
+function delay (t, v) {
+    return new Promise(function (resolve) {
+        setTimeout(resolve.bind(null, v), t)
     })
 }
 
-Promise.prototype.delay = function(t) {
-     return this.then(function(v) {
-          return delay(t, v)
-     })
+Promise.prototype.delay = function (t) {
+    return this.then(function (v) {
+        return delay(t, v)
+    })
 }
