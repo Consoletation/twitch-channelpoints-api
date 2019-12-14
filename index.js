@@ -20,13 +20,62 @@ const rewards = {
             success: false,
             message: `this was made to fail, ${redemption.userName}...`
         }
+    },
+    'Example OBS': async function(redemption) {
+        const suffix = ' (example)'
+
+        const obsPromise = new Promise(function(resolve, reject) {
+            obs.client.send('GetCurrentScene').then(function(initialScene) {
+                obs.client.send('SetCurrentScene', {"scene-name": initialScene.name + suffix}).delay(5000).then(
+                    () => {
+                        obs.client.send('SetCurrentScene', {"scene-name": initialScene.name})
+                            .then(resolve)
+                            .catch(reject)
+                    }).catch(reject)
+            }).catch(reject)
+        })
+
+        return obsPromise.then(
+            () => {
+                return {
+                    success: true,
+                    message: "We did the OBS thing!"
+                }
+            }
+        ).catch(
+            err => {
+                return {
+                    success: false,
+                    message: err
+                }
+            }
+        )
     }
+}
+
+let obs = {
+    enabled: true,
+    address: 'localhost:4444',
+    password: 'irish'
 }
 
 // Application
 const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
 const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
 let handledRewards = new Array()
+
+// OBS Integration
+if (obs.enabled) {
+    log("OBS integration enabled. Attempting connection...")
+    obs.client = new OBSWebSocket()
+    obs.client.connect({ address: obs.address, password: obs.password }).then(
+        out => {
+            log("OBS client connected!", out)
+        }).catch(
+        err => {
+            log("OBS client failed to connect!", err)
+        })
+}
 
 // runs when the DOM is ready
 $().ready(() => {
@@ -207,4 +256,16 @@ function log () {
     const args = Array.prototype.slice.call(arguments);
     args.unshift('%c' + prefix, 'background: #222; color: #bada55');
     console.log.apply(console, args);
+}
+
+function delay(t, v) {
+    return new Promise(function(resolve) {
+         setTimeout(resolve.bind(null, v), t)
+    })
+}
+
+Promise.prototype.delay = function(t) {
+     return this.then(function(v) {
+          return delay(t, v)
+     })
 }
