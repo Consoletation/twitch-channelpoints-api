@@ -1,6 +1,6 @@
 // Configurable
 const rewards = {
-    'Take On Me': {
+    'Event: Take On Me': {
         suffix: ' (takeonme)',
         cooldownInSeconds: 600,
         execute: async function (redemption) {
@@ -29,7 +29,7 @@ const rewards = {
             }
         }
     },
-    'Shutup Noom': {
+    'Event: Shutup Noom': {
         suffix: ' (slap)',
         cooldownInSeconds: 300,
         execute: async function (redemption) {
@@ -58,7 +58,84 @@ const rewards = {
             }
         }
     },
-    'Plant a Bomb': {
+    'Event: Thanos Snap': {
+        suffix: ' (snap)',
+        cooldownInSeconds: 600,
+        execute: async function (redemption) {
+            try {
+                const initialScene = await obs.client.send('GetCurrentScene')
+                // change to the scene
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name + this.suffix
+                })
+
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'snapaudio',
+                    visible: true
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'WEBCAM',
+                    visible: true
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'snapdust',
+                    visible: false
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'thanossnap',
+                    visible: false
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'SNAP_FADE_FINAL',
+                    visible: false
+                })
+
+                // let the audio play a bit then play snap clip
+                await delay(5000)
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'thanossnap',
+                    visible: true
+                })
+
+                await delay(4000)
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'SNAP_FADE_FINAL',
+                    visible: true
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'WEBCAM',
+                    visible: false
+                })
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'snapdust',
+                    visible: true
+                })
+
+                await delay(5000)
+                await obs.client.send('SetSceneItemProperties', {
+                    item: 'SNAP_FADE_FINAL',
+                    visible: false
+                })
+
+                await delay(15000)
+                // back to original scene
+                await obs.client.send('SetCurrentScene', {
+                    'scene-name': initialScene.name
+                })
+
+                return {
+                    success: true,
+                    message: 'We did the OBS thing!'
+                }
+            } catch (e) {
+                return {
+                    success: false,
+                    message: e.error
+                }
+            }
+        }
+    },
+    'Event: Plant a Bomb': {
         suffix: ' (explode)',
         cooldownInSeconds: 600,
         execute: async function (redemption) {
@@ -102,7 +179,7 @@ const rewards = {
                 })
 
                 // back to original scene
-                await delay(9000)
+                await delay(15000)
                 await obs.client.send('SetCurrentScene', {
                     'scene-name': initialScene.name
                 })
