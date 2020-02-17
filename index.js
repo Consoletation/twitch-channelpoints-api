@@ -1,22 +1,20 @@
-const jsonTrial = [
-    {
-        'Event: Take On Me': {
-            startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
-            cooldownInSeconds: 600,
-            hold: false, // do we return to the start scene?
-            commands: [
-                {
-                    function: 'setCurrentScene',
-                    config: { 'scene-name': 'Game Capture (takeonme)' }
-                },
-                {
-                    function: 'wait',
-                    config: { timeInMs: 13000 }
-                }
-            ]
-        }
+const jsonTrial = {
+    'Event: Take On Me': {
+        startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
+        cooldownInSeconds: 600,
+        hold: false, // do we return to the start scene?
+        commands: [
+            {
+                function: 'setCurrentScene',
+                config: { 'scene-name': 'Game Capture (takeonme)' }
+            },
+            {
+                function: 'wait',
+                config: { timeInMs: 13000 }
+            }
+        ]
     }
-]
+}
 
 // Configurable
 const rewards = {
@@ -347,6 +345,10 @@ async function handleRedemption ($redemptionContainer) {
             redemptionData.rewardName + ', ignoring'
         )
     }
+}
+
+async function executeCommandChain(redemptionData){
+    const redemption
 }
 
 function addToCooldown (redemptionData) {
