@@ -5,11 +5,11 @@ const jsonTrial = {
         hold: false, // do we return to the start scene?
         commands: [
             {
-                function: 'setCurrentScene',
+                function: 'SetCurrentScene',
                 config: { 'scene-name': 'Game Capture (takeonme)' }
             },
             {
-                function: 'wait',
+                function: 'Wait',
                 config: { timeInMs: 13000 }
             }
         ]
@@ -348,7 +348,21 @@ async function handleRedemption ($redemptionContainer) {
 }
 
 async function executeCommandChain(redemptionData){
-    const redemption
+    const redemption = jsonTrial[redemptionData.rewardName]
+    const initialScene = await obs.client.send('GetCurrentScene')
+
+    redemption.commands.forEach(command => {
+        commands[command.function](command.config)
+    });
+}
+
+const commands = {
+    "SetCurrentScene": (config) => {
+        return obs.client.send('SetCurrentScene', config)
+    },
+    "Wait": (config) => {
+        return delay(config.timeInMs)
+    }
 }
 
 function addToCooldown (redemptionData) {
