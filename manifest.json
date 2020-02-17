@@ -1,17 +1,10 @@
 {
-
     "manifest_version": 2,
     "name": "Channel Points Redemptions",
     "version": "1.0",
-  
     "description": "Listens for channel point redemptions on twitch and allows for custom handlers",
-
-  
-    "content_scripts": [
-      {
+    "content_scripts": [{
         "matches": ["*://www.twitch.tv/popout/*/reward-queue"],
-        "js": ["assets/js/jquery-3.4.1.min.js", "index.js"]
-      }
-    ]
-  
-  }
+        "js": ["assets/js/jquery-3.4.1.min.js", "assets/js/obs-websocket.min.js", "index.js"]
+    }]
+}
