@@ -281,7 +281,7 @@ const rewards = {
     },
     'Event: Thanos Snap': {
         suffix: ' (snap)',
-        cooldownInSeconds: 1,
+        cooldownInSeconds: 600,
         execute: async function (redemption) {
             try {
                 const initialScene = await obs.client.send('GetCurrentScene')
