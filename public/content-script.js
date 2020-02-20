@@ -1,450 +1,19 @@
-const jsonTrial = {
-    'Event: Take On Me': {
-        startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
-        cooldownInSeconds: 600,
-        hold: false, // do we return to the start scene?
-        commands: [
-            {
-                function: 'SetCurrentScene',
-                config: { 'scene-name': 'Game Capture (takeonme)' },
-            },
-            {
-                function: 'Wait',
-                config: { timeInMs: 1300 },
-            },
-        ],
-    },
-}
-
-// Configurable
-const rewards = {
-    'Event: Take On Me': {
-        suffix: ' (takeonme)',
-        cooldownInSeconds: 600,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                await delay(13000)
-                // back to original scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-    'Event: Shutup Noom': {
-        suffix: ' (slap)',
-        cooldownInSeconds: 300,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                await delay(2500)
-                // back to original scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-    'Event: Confetti': {
-        suffix: ' (confetti)',
-        cooldownInSeconds: 300,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                await delay(5000)
-                // back to original scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-    'Event: Retro': {
-        suffix: ' (retro)',
-        cooldownInSeconds: 600,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                await delay(12000)
-                // back to original scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-    'Event: Disco Dancin': {
-        suffix: ' (disco)',
-        cooldownInSeconds: 900,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                // set the source visible (disco ball enters)
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'disco_enter',
-                    visible: true,
-                })
-
-                await delay(920)
-
-                // swap to looping disco ball
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'disco',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'disco_enter',
-                    visible: false,
-                })
-
-                await delay(20000)
-                // reset them back to not visible
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'disco_enter',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'disco',
-                    visible: false,
-                })
-
-                // back to original scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-    'Event: DJ Pressplay': {
-        suffix: ' (rave)',
-        cooldownInSeconds: 1800,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                // wait for first drop
-                await delay(13000)
-
-                // set the sources visible (webcam, crowd, lasers)
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'dance_crowd',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'lasers',
-                    visible: true,
-                })
-
-                await delay(19000)
-
-                // set all the first sources not visible
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'dance_crowd',
-                    visible: false,
-                })
-
-                // set second set of sources visible
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM 2',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'dance_crowd_2',
-                    visible: true,
-                })
-
-                await delay(10000)
-                // reset all visibility
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM 2',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'dance_crowd_2',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'lasers',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM',
-                    visible: true,
-                })
-
-                // back to original scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-    'Event: Thanos Snap': {
-        suffix: ' (snap)',
-        cooldownInSeconds: 1,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'snapaudio',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'snapdust',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'thanossnap',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'SNAP_FADE_FINAL',
-                    visible: false,
-                })
-
-                // let the audio play a bit then play snap clip
-                await delay(5000)
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'thanossnap',
-                    visible: true,
-                })
-
-                await delay(4000)
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'SNAP_FADE_FINAL',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'snapdust',
-                    visible: true,
-                })
-
-                await delay(5000)
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'SNAP_FADE_FINAL',
-                    visible: false,
-                })
-
-                await delay(15000)
-                // back to original scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-    'Event: Plant a Bomb': {
-        suffix: ' (explode)',
-        cooldownInSeconds: 600,
-        execute: async function(redemption) {
-            try {
-                const initialScene = await obs.client.send('GetCurrentScene')
-                // change to the scene
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name + this.suffix,
-                })
-
-                // set up the scene items
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM',
-                    visible: true,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'smokebomb',
-                    visible: false,
-                })
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'explosion',
-                    visible: false,
-                })
-
-                // show explosion and hide cam
-                await delay(2500)
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'explosion',
-                    visible: true,
-                })
-                await delay(500)
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'smokebomb',
-                    visible: true,
-                })
-                await delay(800)
-                // hide cam
-                await obs.client.send('SetSceneItemProperties', {
-                    item: 'WEBCAM',
-                    visible: false,
-                })
-
-                // back to original scene
-                await delay(15000)
-                await obs.client.send('SetCurrentScene', {
-                    'scene-name': initialScene.name,
-                })
-                return {
-                    success: true,
-                    message: 'We did the OBS thing!',
-                }
-            } catch (e) {
-                return {
-                    success: false,
-                    message: e.error,
-                }
-            }
-        },
-    },
-}
-
-const obs = {
-    enabled: true,
-    address: 'localhost:1234',
-    password: 'noom1234',
-}
-
 // Application
 const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
 const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
 const handledRewards = []
 const cooldowns = []
-
-// OBS Integration
-if (obs.enabled) {
-    log('OBS integration enabled. Attempting connection...')
-    obs.client = new OBSWebSocket()
-    obs.client
-        .connect({ address: obs.address, password: obs.password })
-        .then(out => {
-            log('OBS client connected!', out)
-        })
-        .catch(err => {
-            log('OBS client failed to connect!', err)
-        })
-}
+let settings = {}
+let redemptions = {}
 
 // runs when the DOM is ready
-$().ready(() => {
-    log('Channel Points Handler Loaded. Looking for rewards...')
+$().ready(async () => {
+    settings = await loadSettings()
+    redemptions = await loadRedemptions()
+    await connectToOBS(settings.obs)
+    browser.runtime.onMessage.addListener(messageListener)
+
+    log('Channel Points Handler Loaded.')
     // get the reward container
     ctPointsContainerObserver.observe(document.body, {
         childList: true,
@@ -453,6 +22,59 @@ $().ready(() => {
         characterData: false,
     })
 })
+
+function messageListener(message, sender, sendResponse) {
+    console.log('got message:', message, sender, sendResponse)
+    if (message.event === 'settings') {
+        loadSettings()
+    } else if (message.event === 'redemptions') {
+        loadRedemptions()
+    }
+
+    sendResponse('OK')
+}
+
+async function loadSettings() {
+    return Promise.resolve({
+        obs: {
+            address: 'localhost:1234',
+            password: 'noom1234',
+        },
+    })
+}
+
+async function loadRedemptions() {
+    return Promise.resolve({
+        'Event: Take On Me': {
+            startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
+            cooldownInSeconds: 600,
+            hold: false, // do we return to the start scene?
+            commands: [
+                {
+                    function: 'SetCurrentScene',
+                    config: { 'scene-name': 'Game Capture (takeonme)' },
+                },
+                {
+                    function: 'Wait',
+                    config: { timeInMs: 1300 },
+                },
+            ],
+        },
+    })
+}
+
+async function connectToOBS(obs) {
+    log('OBS integration enabled. Attempting connection...')
+    obs.client = new OBSWebSocket()
+    return obs.client
+        .connect(settings.obs)
+        .then(() => {
+            log('OBS client connected!')
+        })
+        .catch(err => {
+            log('OBS client failed to connect!', err)
+        })
+}
 
 // find reward container from mutation events
 function findRewardContainer(mutations) {
@@ -535,8 +157,8 @@ async function handleRedemption($redemptionContainer) {
 }
 
 async function executeCommandChain(redemptionData) {
-    const redemption = jsonTrial[redemptionData.rewardName]
-    const initialScene = await obs.client.send('GetCurrentScene')
+    const redemption = redemptions[redemptionData.rewardName]
+    const initialScene = await settings.obs.client.send('GetCurrentScene')
     // check if the redemption exists
     if (!redemption) {
         throw new Error(
@@ -563,7 +185,7 @@ async function executeCommandChain(redemptionData) {
 
     // do we return to the initial scene?
     if (!redemption.hold) {
-        await obs.client.send('SetCurrentScene', {
+        await settings.obs.client.send('SetCurrentScene', {
             'scene-name': initialScene.name,
         })
     }
@@ -575,7 +197,7 @@ async function executeCommandChain(redemptionData) {
 
 const commands = {
     SetCurrentScene: config => {
-        return obs.client.send('SetCurrentScene', config)
+        return settings.obs.client.send('SetCurrentScene', config)
     },
     Wait: config => {
         return delay(config.timeInMs)
@@ -583,7 +205,7 @@ const commands = {
 }
 
 function addToCooldown(redemptionData) {
-    const reward = rewards[redemptionData.rewardName]
+    const reward = redemptions[redemptionData.rewardName]
     const name = redemptionData.rewardName
     const cooldown = reward.cooldownInSeconds
     cooldowns.push(name)

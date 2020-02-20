@@ -1,16 +1,26 @@
 {
-    "manifest_version": 2,
-    "name": "Channel Points Redemptions",
-    "version": "1.0",
-    "description": "Listens for channel point redemptions on twitch and allows for custom handlers",
-    "content_scripts": [{
-      "matches": ["*://www.twitch.tv/popout/*/reward-queue"],
-      "js": ["jquery-3.4.1.min.js", "obs-websocket.min.js", "content-script.js"]
-  }],
-    "browser_action": {
-        "show_matches": ["*://www.twitch.tv/popout/*/reward-queue"],
-        "browser_style": true,
-        "default_title": "Channel Points",
-        "default_popup": "index.html"
-      }
+  "manifest_version": 2,
+  "name": "Channel Points Redemptions",
+  "version": "1.0",
+  "description": "Listens for channel point redemptions on twitch and allows for custom handlers",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.twitch.tv/popout/*/reward-queue"
+      ],
+      "js": [
+        "jquery-3.4.1.min.js",
+        "obs-websocket.min.js",
+        "content-script.js"
+      ]
+    }
+  ],
+  "page_action": {
+    "show_matches": [
+      "https://www.twitch.tv/popout/*/reward-queue*"
+    ],
+    "browser_style": true,
+    "default_title": "Channel Points",
+    "default_popup": "index.html"
+  }
 }
