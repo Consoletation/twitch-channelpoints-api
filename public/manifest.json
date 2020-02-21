@@ -11,18 +11,8 @@
       "js": [
         "jquery-3.4.1.min.js",
         "obs-websocket.min.js",
-        "event-handler.js",
-        "dom-listener.js",
-        "dom-manipulator.js"
+        "content-script.js"
       ]
     }
-  ],
-  "page_action": {
-    "show_matches": [
-      "https://www.twitch.tv/popout/*/reward-queue*"
-    ],
-    "browser_style": true,
-    "default_title": "Channel Points",
-    "default_popup": "index.html"
-  }
+  ]
 }

@@ -1,11 +1,17 @@
+import { log } from './helpers'
+import { setupDOM } from './dom-manipulator'
+
 // Application
 const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
 const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents)
 const handledRewards = new Map()
 const pendingRewards = new Map()
+let resolver = {}
+const DOMReady = new Promise(resolve => {
+    resolver = resolve
+})
 
-// runs when the DOM is ready
-$().ready(async () => {
+export function listen() {
     log('Channel Points DOM Listener Loaded.')
     // get the reward container
     ctPointsContainerObserver.observe(document.body, {
@@ -14,7 +20,8 @@ $().ready(async () => {
         attributes: false,
         characterData: false,
     })
-})
+    return DOMReady
+}
 
 // find reward container from mutation events
 function findRewardContainer(mutations) {
@@ -32,6 +39,8 @@ function findRewardContainer(mutations) {
                     attributes: false,
                     chatacterData: false,
                 })
+                // resolves the deferred promise
+                resolver()
             }
         })
     })
@@ -176,11 +185,4 @@ function extractActionButtons($redemptionContainer) {
         resolve: $buttons[0],
         reject: $buttons[1],
     }
-}
-
-function log() {
-    const prefix = '[ctPoints]'
-    const args = Array.prototype.slice.call(arguments)
-    args.unshift('%c' + prefix, 'background: #222; color: #bada55')
-    console.log.apply(console, args)
 }

@@ -1,33 +1,20 @@
+import { displayRedemptions } from './dom-manipulator'
+
 // Application
 const cooldowns = []
 let settings = {}
-let redemptions = {}
+let redemptionEvents = {}
 
-// runs when the DOM is ready
-$().ready(async () => {
-    settings = await loadSettings()
-    redemptions = await loadRedemptions()
-    await connectToOBS(settings.obs)
-    browser.runtime.onMessage.addListener(messageListener)
-
+export async function connect() {
     log('Channel Points Event Handler Loaded.')
-})
 
-function messageListener(message, sender, sendResponse) {
-    console.log('got message:', message, sender, sendResponse)
-    if (message.event === 'loadSettings') {
-        loadSettings()
-    } else if (message.event === 'loadRedemptions') {
-        loadRedemptions()
-    } else if (message.event === 'redemption') {
-        console.log('new redemption event')
-        handleRedemption(message.data)
-    }
-
-    sendResponse('OK')
+    settings = await loadSettings()
+    redemptionEvents = await loadRedemptionEvents()
+    displayRedemptions(redemptionEvents)
+    return connectToOBS(settings.obs)
 }
 
-async function loadSettings() {
+export async function loadSettings() {
     return Promise.resolve({
         obs: {
             address: 'localhost:1234',
@@ -36,7 +23,7 @@ async function loadSettings() {
     })
 }
 
-async function loadRedemptions() {
+export async function loadRedemptionEvents() {
     return Promise.resolve({
         'Event: Take On Me': {
             startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
@@ -45,10 +32,15 @@ async function loadRedemptions() {
             commands: [
                 {
                     function: 'SetCurrentScene',
-                    config: { 'scene-name': 'Game Capture (takeonme)' },
+                    prettyName: 'Change to scene',
+                    config: {
+                        'scene-name': 'Game Capture (takeonme)',
+                        sceneName: 'GameCapture (takeonme)',
+                    },
                 },
                 {
                     function: 'Wait',
+                    prettyName: 'Pause',
                     config: { timeInMs: 1300 },
                 },
             ],
@@ -59,14 +51,7 @@ async function loadRedemptions() {
 async function connectToOBS(obs) {
     log('OBS integration enabled. Attempting connection...')
     obs.client = new OBSWebSocket()
-    return obs.client
-        .connect(settings.obs)
-        .then(() => {
-            log('OBS client connected!')
-        })
-        .catch(err => {
-            log('OBS client failed to connect!', err)
-        })
+    return obs.client.connect(settings.obs)
 }
 
 // used handle the redemption event, accepts jquery object
@@ -120,7 +105,7 @@ function acceptRedemption(redemptionData) {
 }
 
 async function executeCommandChain(redemptionData) {
-    const redemption = redemptions[redemptionData.rewardName]
+    const redemption = redemptionEvents[redemptionData.rewardName]
     const initialScene = await settings.obs.client.send('GetCurrentScene')
     // check if the redemption exists
     if (!redemption) {
@@ -168,7 +153,7 @@ const commands = {
 }
 
 function addToCooldown(redemptionData) {
-    const reward = redemptions[redemptionData.rewardName]
+    const reward = redemptionEvents[redemptionData.rewardName]
     const name = redemptionData.rewardName
     const cooldown = reward.cooldownInSeconds
     cooldowns.push(name)

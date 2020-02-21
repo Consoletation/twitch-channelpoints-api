@@ -5,8 +5,7 @@
   "main": "channel-points-handler.js",
   "scripts": {
     "build": "rollup -c",
-    "dev": "rollup -c -w && web-ext run",
-    "start": "sirv public"
+    "dev": "rollup -c -w"
   },
   "repository": {
     "type": "git",
@@ -33,9 +32,7 @@
     "@rollup/plugin-node-resolve": "^7.0.0",
     "rollup": "^1.20.0",
     "rollup-plugin-livereload": "^1.0.0",
-    "rollup-plugin-svelte": "^5.0.3",
     "rollup-plugin-terser": "^5.1.2",
-    "svelte": "^3.0.0",
     "eslint": "^6.7.2",
     "eslint-config-defaults": "^9.0.0",
     "eslint-config-standard": "^14.1.0",
@@ -44,11 +41,11 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
     "eslint-plugin-prettier": "^3.1.1",
-    "eslint-plugin-svelte3": "^2.7.3",
-    "prettier": "^1.18.2",
-    "prettier-plugin-svelte": "^0.7.0"
+    "prettier": "^1.18.2"
   },
   "dependencies": {
+    "rollup-plugin-handlebars-plus": "^0.2.5",
+    "rollup-plugin-root-import": "^1.0.0",
     "sirv-cli": "^0.4.4"
   }
 }

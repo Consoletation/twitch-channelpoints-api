@@ -1,0 +1,16 @@
+<div class="redemption-container">
+    <div>{{redemptionName}}</div>
+    <div>cooldown: {{redemption.cooldownInSeconds}}</div>
+    <div>hold: {{redemption.hold}}</div>
+    <div>start scene: {{redemption.startScene}}</div>
+    <div>
+        <div>commands: </div>
+        {{#each redemption.commands}}
+            <div>
+                {{this.prettyName}}:
+                {{this.config.sceneName}}
+                {{this.config.timeInMs}}
+            </div>
+        {{/each}}
+    </div>
+</div>
