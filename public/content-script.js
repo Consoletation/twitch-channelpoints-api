@@ -4,39 +4,148 @@
     $$1 = $$1 && $$1.hasOwnProperty('default') ? $$1['default'] : $$1;
 
     const prefix = '[ctPoints]';
-
     function log() {
-        const args = Array.prototype.slice.call(arguments);
-        args.unshift('%c' + prefix, 'background: #222; color: #bada55');
-        console.log.apply(console, args);
+      const args = Array.prototype.slice.call(arguments);
+      args.unshift('%c' + prefix, 'background: #222; color: #bada55');
+      console.log.apply(console, args);
     }
 
-    const commandPresets = {
-        SetCurrentScene: {
-            prettyName: 'Change to scene',
-            configPropertyName: 'scene-name',
-            configPropertySafeName: 'sceneName',
-        },
-        Wait: {
-            prettyName: 'Pause (ms)',
-            configPropertyName: 'timeInMs',
-            configPropertySafeName: 'timeInMs',
-        },
+    const COMMAND_PRESETS = {
+      SetCurrentScene: {
+        functionName: 'SetCurrentScene',
+        prettyName: 'Change to scene',
+        actions: [{
+          name: 'Scene Name',
+          property: 'scene-name',
+          propertySafe: 'sceneName',
+          type: 'text'
+        }]
+      },
+      Wait: {
+        functionName: 'Wait',
+        prettyName: 'Pause (ms)',
+        actions: [{
+          name: 'Time (ms)',
+          property: 'timeInMs',
+          propertySafe: 'timeInMs',
+          type: 'number'
+        }]
+      },
+      SetSourceVisibility: {
+        functionName: 'SetSourceVisibility',
+        prettyName: 'Set Source Visibility',
+        actions: [{
+          name: 'Source Name',
+          property: 'item',
+          type: 'text'
+        }, {
+          name: 'Visibility',
+          property: 'visibility',
+          type: 'checkbox',
+          value: 'true'
+        }]
+      }
     };
-
     class Command {
-        constructor(attributes) {
-            console.log('new command');
-            this.function = attributes.function;
-            this.prettyName = commandPresets[this.function].prettyName;
-            this.config = {
-                [commandPresets[this.function].configPropertyName]:
-                    attributes.configValue,
-                [commandPresets[this.function].configPropertySafeName]:
-                    attributes.configValue,
-            };
-        }
+      constructor(attributes) {
+        this.functionName = attributes.functionName;
+        const preset = COMMAND_PRESETS[this.functionName];
+        this.config = {};
+        this.prettyName = preset.prettyName;
+        attributes.config.forEach(configElement => {
+          this.config[configElement.name] = configElement.value;
+        });
+      }
+
     }
+
+    let settings = {};
+    let redemptionEvents = {};
+    const storage = window.localStorage;
+    const REDEMPTIONS_KEY = 'redemptionEvents';
+    const demoEvent = {
+      redemptionName: 'Event: Take On Me',
+      startScene: 'Game Capture',
+      // if start scene is specified then the alert only plays when OBS is on that scene
+      cooldownInSeconds: 600,
+      hold: false,
+      // do we return to the start scene?
+      commands: [{
+        functionName: 'SetCurrentScene',
+        prettyName: 'Change to scene',
+        config: {
+          'scene-name': 'Game Capture (takeonme)'
+        }
+      }, {
+        functionName: 'Wait',
+        prettyName: 'Pause',
+        config: {
+          timeInMs: 1300
+        }
+      }]
+    };
+    async function connect() {
+      log$1('Channel Points Event Handler Loaded.');
+      settings = await loadSettings();
+      redemptionEvents = await loadRedemptionEvents();
+      displayRedemptions(redemptionEvents);
+      return connectToOBS(settings.obs);
+    }
+    async function loadSettings() {
+      return Promise.resolve({
+        obs: {
+          address: 'localhost:1234',
+          password: 'noom1234'
+        }
+      });
+    }
+    async function saveRedemptionEvent(redemption, override) {
+      // not overriding existing settings so check if it exists
+      if (!override) {
+        if (redemptionEvents[redemption.redemptionName]) {
+          return Promise.reject(new Error('Entry already exists, are you sure you want to replace it?'));
+        }
+      }
+
+      redemptionEvents[redemption.redemptionName] = redemption;
+      storage.setItem(REDEMPTIONS_KEY, JSON.stringify(redemptionEvents));
+      displayRedemptions(redemptionEvents);
+      return Promise.resolve(true);
+    }
+    async function loadRedemptionEvents() {
+      const storedItems = JSON.parse(storage.getItem(REDEMPTIONS_KEY));
+      storedItems[demoEvent.redemptionName] = demoEvent;
+      console.log(`Loaded redemptions: `, storedItems);
+      return Promise.resolve(storedItems);
+    }
+    async function getRedemption(redemptionName) {
+      return Promise.resolve(redemptionEvents[redemptionName]);
+    }
+
+    async function connectToOBS(obs) {
+      log$1('OBS integration enabled. Attempting connection...');
+      obs.client = new OBSWebSocket();
+      return obs.client.connect(settings.obs);
+    } // used handle the redemption event, accepts jquery object
+
+    function log$1() {
+      const prefix = '[ctPoints]';
+      const args = Array.prototype.slice.call(arguments);
+      args.unshift('%c' + prefix, 'background: #222; color: #bada55');
+      console.log.apply(console, args);
+    }
+
+    function delay(t, v) {
+      return new Promise(function (resolve) {
+        setTimeout(resolve.bind(null, v), t);
+      });
+    }
+
+    Promise.prototype.delay = function (t) {
+      return this.then(function (v) {
+        return delay(t, v);
+      });
+    };
 
     var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -483,7 +592,7 @@
 
     unwrapExports(_if);
 
-    var log$1 = createCommonjsModule(function (module, exports) {
+    var log$2 = createCommonjsModule(function (module, exports) {
 
     exports.__esModule = true;
 
@@ -511,7 +620,7 @@
     //# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uL2xpYi9oYW5kbGViYXJzL2hlbHBlcnMvbG9nLmpzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7cUJBQWUsVUFBUyxRQUFRLEVBQUU7QUFDaEMsVUFBUSxDQUFDLGNBQWMsQ0FBQyxLQUFLLEVBQUUsa0NBQWlDO0FBQzlELFFBQUksSUFBSSxHQUFHLENBQUMsU0FBUyxDQUFDO1FBQ3BCLE9BQU8sR0FBRyxTQUFTLENBQUMsU0FBUyxDQUFDLE1BQU0sR0FBRyxDQUFDLENBQUMsQ0FBQztBQUM1QyxTQUFLLElBQUksQ0FBQyxHQUFHLENBQUMsRUFBRSxDQUFDLEdBQUcsU0FBUyxDQUFDLE1BQU0sR0FBRyxDQUFDLEVBQUUsQ0FBQyxFQUFFLEVBQUU7QUFDN0MsVUFBSSxDQUFDLElBQUksQ0FBQyxTQUFTLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQztLQUN6Qjs7QUFFRCxRQUFJLEtBQUssR0FBRyxDQUFDLENBQUM7QUFDZCxRQUFJLE9BQU8sQ0FBQyxJQUFJLENBQUMsS0FBSyxJQUFJLElBQUksRUFBRTtBQUM5QixXQUFLLEdBQUcsT0FBTyxDQUFDLElBQUksQ0FBQyxLQUFLLENBQUM7S0FDNUIsTUFBTSxJQUFJLE9BQU8sQ0FBQyxJQUFJLElBQUksT0FBTyxDQUFDLElBQUksQ0FBQyxLQUFLLElBQUksSUFBSSxFQUFFO0FBQ3JELFdBQUssR0FBRyxPQUFPLENBQUMsSUFBSSxDQUFDLEtBQUssQ0FBQztLQUM1QjtBQUNELFFBQUksQ0FBQyxDQUFDLENBQUMsR0FBRyxLQUFLLENBQUM7O0FBRWhCLFlBQVEsQ0FBQyxHQUFHLE1BQUEsQ0FBWixRQUFRLEVBQVEsSUFBSSxDQUFDLENBQUM7R0FDdkIsQ0FBQyxDQUFDO0NBQ0oiLCJmaWxlIjoibG9nLmpzIiwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24oaW5zdGFuY2UpIHtcbiAgaW5zdGFuY2UucmVnaXN0ZXJIZWxwZXIoJ2xvZycsIGZ1bmN0aW9uKC8qIG1lc3NhZ2UsIG9wdGlvbnMgKi8pIHtcbiAgICBsZXQgYXJncyA9IFt1bmRlZmluZWRdLFxuICAgICAgb3B0aW9ucyA9IGFyZ3VtZW50c1thcmd1bWVudHMubGVuZ3RoIC0gMV07XG4gICAgZm9yIChsZXQgaSA9IDA7IGkgPCBhcmd1bWVudHMubGVuZ3RoIC0gMTsgaSsrKSB7XG4gICAgICBhcmdzLnB1c2goYXJndW1lbnRzW2ldKTtcbiAgICB9XG5cbiAgICBsZXQgbGV2ZWwgPSAxO1xuICAgIGlmIChvcHRpb25zLmhhc2gubGV2ZWwgIT0gbnVsbCkge1xuICAgICAgbGV2ZWwgPSBvcHRpb25zLmhhc2gubGV2ZWw7XG4gICAgfSBlbHNlIGlmIChvcHRpb25zLmRhdGEgJiYgb3B0aW9ucy5kYXRhLmxldmVsICE9IG51bGwpIHtcbiAgICAgIGxldmVsID0gb3B0aW9ucy5kYXRhLmxldmVsO1xuICAgIH1cbiAgICBhcmdzWzBdID0gbGV2ZWw7XG5cbiAgICBpbnN0YW5jZS5sb2coLi4uYXJncyk7XG4gIH0pO1xufVxuIl19
     });
 
-    unwrapExports(log$1);
+    unwrapExports(log$2);
 
     var lookup = createCommonjsModule(function (module, exports) {
 
@@ -607,7 +716,7 @@
 
 
 
-    var _helpersLog2 = _interopRequireDefault(log$1);
+    var _helpersLog2 = _interopRequireDefault(log$2);
 
 
 
@@ -1517,7 +1626,7 @@
     }
 
     var Template$1 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
-        return "<div class=\"app-container\">\r\n    <div class=\"errors\"></div>\r\n    <div class=\"button-container\" id=\"create-event-button\"><button>Create Event</button></div>\r\n    <div class=\"create-form-container\">\r\n        <div class=\"main-options\"></div>\r\n        <div class=\"command-options\">\r\n            <label>Commands:</label>\r\n        </div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"create-form-submit-button\">Create Redemption Event</button>\r\n        </div>\r\n    </div>\r\n    <div class=\"redemptions-container\">redemptions in here</div>\r\n</div>";
+        return "<div class=\"app-container\">\r\n    <div class=\"errors\"></div>\r\n    <div class=\"button-container\" id=\"create-event-button\"><button>Create Event</button></div>\r\n    <div class=\"create-form-container\">\r\n        <h3>New Redemption Event</h3>\r\n        <div class=\"main-options\"></div>\r\n        <div class=\"command-options\">\r\n            <label>Commands:</label>\r\n            <button type=\"button\" id=\"create-form-create-command\">New Command</button>\r\n            <div class='command-group'></div>\r\n        </div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"create-form-submit-button\">Create Redemption Event</button>\r\n        </div>\r\n    </div>\r\n    <h3>Edit Redemption Event</h3>\r\n    <div class=\"edit-form-container\">\r\n        <div class=\"main-options\"></div>\r\n        <div class=\"command-options\">\r\n            <label>Commands:</label>\r\n            <button type=\"button\" id=\"edit-form-create-command\">New Command</button>\r\n            <div class='command-group'></div>\r\n        </div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"edit-form-submit-button\">Save Changes</button>\r\n        </div>\r\n    </div>\r\n    <h3>Redemptions</h3>\r\n    <div class=\"redemptions-container\">redemptions in here</div>\r\n</div>";
     },"useData":true});
     function AppContainer(data, options, asString) {
       var html = Template$1(data, options);
@@ -1525,20 +1634,22 @@
     }
 
     var Template$2 = Handlebars.template({"1":function(container,depth0,helpers,partials,data) {
-        var stack1, alias1=container.lambda, alias2=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        var stack1, lookupProperty = container.lookupProperty || function(parent, propertyName) {
             if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
               return parent[propertyName];
             }
             return undefined
         };
 
-      return "            <div>\r\n                "
-        + alias2(alias1((depth0 != null ? lookupProperty(depth0,"prettyName") : depth0), depth0))
-        + ":\r\n                "
-        + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"config") : depth0)) != null ? lookupProperty(stack1,"sceneName") : stack1), depth0))
-        + "\r\n                "
-        + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"config") : depth0)) != null ? lookupProperty(stack1,"timeInMs") : stack1), depth0))
-        + "\r\n            </div>\r\n";
+      return "        <div>\r\n            - "
+        + container.escapeExpression(container.lambda((depth0 != null ? lookupProperty(depth0,"prettyName") : depth0), depth0))
+        + ":\r\n"
+        + ((stack1 = lookupProperty(helpers,"each").call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? lookupProperty(depth0,"config") : depth0),{"name":"each","hash":{},"fn":container.program(2, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":13,"column":12},"end":{"line":15,"column":21}}})) != null ? stack1 : "")
+        + "        </div>\r\n";
+    },"2":function(container,depth0,helpers,partials,data) {
+        return "                "
+        + container.escapeExpression(container.lambda(depth0, depth0))
+        + "\r\n";
     },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
         var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.escapeExpression, alias3=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
             if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
@@ -1547,16 +1658,16 @@
             return undefined
         };
 
-      return "<div class=\"redemption-container\">\r\n    <div>"
-        + alias2(((helper = (helper = lookupProperty(helpers,"redemptionName") || (depth0 != null ? lookupProperty(depth0,"redemptionName") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"redemptionName","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":2,"column":9},"end":{"line":2,"column":27}}}) : helper)))
-        + "</div>\r\n    <div>cooldown: "
+      return "<div class=\"redemption-container\">\r\n    <button type=\"button\" id=\"redemption-edit-button\">Edit Redemption Event</button>\r\n    <button type=\"button\" id=\"redemption-delete-button\">Delete Redemption Event</button>\r\n    <div><h4>"
+        + alias2(((helper = (helper = lookupProperty(helpers,"redemptionName") || (depth0 != null ? lookupProperty(depth0,"redemptionName") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"redemptionName","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":4,"column":13},"end":{"line":4,"column":31}}}) : helper)))
+        + "</h4></div>\r\n    <div>cooldown: "
         + alias2(alias3(((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"cooldownInSeconds") : stack1), depth0))
         + "</div>\r\n    <div>hold: "
         + alias2(alias3(((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"hold") : stack1), depth0))
         + "</div>\r\n    <div>start scene: "
         + alias2(alias3(((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"startScene") : stack1), depth0))
         + "</div>\r\n    <div>\r\n        <div>commands: </div>\r\n"
-        + ((stack1 = lookupProperty(helpers,"each").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"commands") : stack1),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":8,"column":8},"end":{"line":14,"column":17}}})) != null ? stack1 : "")
+        + ((stack1 = lookupProperty(helpers,"each").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"commands") : stack1),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":10,"column":8},"end":{"line":17,"column":17}}})) != null ? stack1 : "")
         + "    </div>\r\n</div>";
     },"useData":true});
     function RedemptionEvent(data, options, asString) {
@@ -1564,8 +1675,25 @@
       return (asString || false) ? html : $$1(html);
     }
 
-    var Template$3 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
-        return "<form class=\"create-form\">\r\n    <div class=\"form-group\">\r\n        <label for=\"redemptionName\">Redemption Name</label>\r\n        <input type=\"text\" name=\"redemptionName\" id=\"\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"startScene\">Start Scene</label>\r\n        <input type=\"text\" name=\"startScene\" id=\"\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"cooldownInSeconds\">Cooldown</label>\r\n        <input type=\"number\" name=\"cooldownInSeconds\" id=\"\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"hold\">Hold</label>\r\n        <input type=\"checkbox\" name=\"hold\" id=\"\" value=\"true\">\r\n    </div>\r\n</form>";
+    var Template$3 = Handlebars.template({"1":function(container,depth0,helpers,partials,data) {
+        return "checked ";
+    },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+        var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+            if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+              return parent[propertyName];
+            }
+            return undefined
+        };
+
+      return "<form class=\"form\">\r\n    <div class=\"form-group\">\r\n        <label for=\"redemptionName\">Redemption Name</label>\r\n        <input type=\"text\" name=\"redemptionName\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"redemptionName") || (depth0 != null ? lookupProperty(depth0,"redemptionName") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"redemptionName","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":4,"column":62},"end":{"line":4,"column":80}}}) : helper)))
+        + "\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"startScene\">Start Scene</label>\r\n        <input type=\"text\" name=\"startScene\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"startScene") || (depth0 != null ? lookupProperty(depth0,"startScene") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"startScene","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":8,"column":58},"end":{"line":8,"column":72}}}) : helper)))
+        + "\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"cooldownInSeconds\">Cooldown (s)</label>\r\n        <input type=\"number\" name=\"cooldownInSeconds\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"cooldownInSeconds") || (depth0 != null ? lookupProperty(depth0,"cooldownInSeconds") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"cooldownInSeconds","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":12,"column":67},"end":{"line":12,"column":88}}}) : helper)))
+        + "\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"hold\">Hold</label>\r\n        <input type=\"checkbox\" name=\"hold\" id=\"\" value=\"true\" "
+        + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"hold") : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":16,"column":62},"end":{"line":16,"column":89}}})) != null ? stack1 : "")
+        + ">\r\n    </div>\r\n</form>";
     },"useData":true});
     function CreateForm(data, options, asString) {
       var html = Template$3(data, options);
@@ -1573,367 +1701,388 @@
     }
 
     var Template$4 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
-        var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
-            if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
-              return parent[propertyName];
-            }
-            return undefined
-        };
-
-      return "<form class=\"command-form\">\r\n    <div class=\"form-group\">\r\n        <label for=\"function\">Action Command</label>\r\n        <select name=\"function\" id=\""
-        + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"index") || (depth0 != null ? lookupProperty(depth0,"index") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"index","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":4,"column":36},"end":{"line":4,"column":45}}}) : helper)))
-        + "\">\r\n            <option value=\"SetCurrentScene\">Change to Scene</option>\r\n            <option value=\"Wait\">Pause (ms)</option>\r\n            <option value=\"SetSceneVisibility\">Set Scene Visibility</option>\r\n        </select>\r\n    </div>\r\n\r\n    <div class=\"form-group\">\r\n        <label for=\"configValue\">Action Value</label>\r\n        <input type=\"text\" name=\"actionValue\" id=\"\">\r\n    </div>\r\n</form>";
+        return "<form class=\"command-form\">\r\n    <div class=\"form-group\">\r\n        <label for=\"function\">Action Command</label>\r\n        <select name=\"function\" id=\"function-select\">\r\n            <option value=\"\" disabled selected hidden>Select an action</option>\r\n            <option value=\"SetCurrentScene\">Change to Scene</option>\r\n            <option value=\"Wait\">Pause (ms)</option>\r\n            <option value=\"SetSourceVisibility\">Set Source Visibility</option>\r\n        </select>\r\n    </div>\r\n\r\n    <div class=\"form-group action-value-group\">\r\n    </div>\r\n</form>";
     },"useData":true});
     function CommandForm(data, options, asString) {
       var html = Template$4(data, options);
       return (asString || false) ? html : $$1(html);
     }
 
-    log('Channel Points DOM Manipulator Loaded.');
+    var Template$5 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+        var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+            if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+              return parent[propertyName];
+            }
+            return undefined
+        };
 
-    // initialize the DOM with our UI components
+      return "<label for=\"actionValue\">"
+        + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":1,"column":25},"end":{"line":1,"column":33}}}) : helper)))
+        + "</label>\r\n<input type=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"type") || (depth0 != null ? lookupProperty(depth0,"type") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"type","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":2,"column":13},"end":{"line":2,"column":21}}}) : helper)))
+        + "\" name=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"property") || (depth0 != null ? lookupProperty(depth0,"property") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"property","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":2,"column":29},"end":{"line":2,"column":41}}}) : helper)))
+        + "\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"value") || (depth0 != null ? lookupProperty(depth0,"value") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"value","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":2,"column":56},"end":{"line":2,"column":65}}}) : helper)))
+        + "\">";
+    },"useData":true});
+    function CommandFormValue(data, options, asString) {
+      var html = Template$5(data, options);
+      return (asString || false) ? html : $$1(html);
+    }
+
+    log('Channel Points DOM Manipulator Loaded.'); // initialize the DOM with our UI components
+
     function setupDOM() {
-        console.log('setting up the DOM');
-        $('.app-container').remove();
-        $('.reward-queue-body').prepend(AppContainer());
-        $('.create-form-container .main-options').prepend(CreateForm());
-        $('.create-form-container .command-options').append(CommandForm());
-        bindClicks();
+      console.log('setting up the DOM');
+      $('.app-container').remove();
+      $('.reward-queue-body').prepend(AppContainer());
+      $('.create-form-container .main-options').prepend(CreateForm());
+      $('.create-form-container .command-group').append(createNewCommandForm());
+      bindClicks();
     }
 
     function bindClicks() {
-        $('#create-event-button').click(showCreateView);
-        $('#create-form-submit-button').click(createNewRedemptionEvent);
+      $('#create-event-button').click(showCreateView);
+      $('#create-form-submit-button').click(createNewRedemptionEvent);
+      $('#create-form-create-command').click(() => {
+        $('.create-form-container .command-group').append(createNewCommandForm());
+      });
+      $('#edit-form-create-command').click(() => {
+        $('.edit-form-container .command-group').append(createNewCommandForm());
+      });
+      $('#edit-form-submit-button').click(() => {
+        editRedemptionEvent();
+      });
     }
 
     function showCreateView() {
-        alert('making new alert now');
+      alert('making new alert now');
     }
 
-    function createNewRedemptionEvent() {
-        let redemptionEvent = {};
-        // grab the values out of the form
-        const optionsSerialData = $('.create-form').serializeArray();
-        optionsSerialData.forEach(element => {
-            redemptionEvent[element.name] = element.value;
-        });
+    async function createNewRedemptionEvent() {
+      const $form = $('.create-form-container');
+      const redemptionEvent = parseJqueryFormToObject($form); // send off the redemptionEvent for storage
 
-        // grab all of the commands and boil them down into Command objects
-        const commandsSerialData = [];
-        $('.command-form').each(function() {
-            commandsSerialData.push($(this).serializeArray());
-        });
-        redemptionEvent.commands = [];
-        commandsSerialData.forEach(element => {
-            const commandData = {
-                function: element[0].value,
-                configValue: element[1].value,
-            };
-            let command = new Command(commandData);
-            redemptionEvent.commands.push(command);
-        });
+      try {
+        await saveRedemptionEvent(redemptionEvent);
+      } catch (e) {
+        // saving failed, do we need to confirm?
+        if (confirm(e.message)) {
+          await saveRedemptionEvent(redemptionEvent, true);
+        }
+      }
+    }
 
-        // send off the redemptionEvent for storage
-        console.log(redemptionEvent);
+    async function editRedemptionEvent() {
+      const $formContainer = $('.edit-form-container');
+      const redemptionEvent = parseJqueryFormToObject($formContainer); // send off the redemptionEvent for storage
+
+      await saveRedemptionEvent(redemptionEvent, true);
+    }
+
+    function parseJqueryFormToObject($formContainer) {
+      const redemptionEvent = {}; // grab the values out of the form
+
+      const optionsSerialData = $formContainer.find('.form').serializeArray();
+      optionsSerialData.forEach(element => {
+        redemptionEvent[element.name] = element.value;
+      }); // grab all of the commands and boil them down into Command objects
+
+      const commandsSerialData = [];
+      $formContainer.find('.command-form').each(function () {
+        commandsSerialData.push($(this).serializeArray());
+      });
+      redemptionEvent.commands = [];
+      commandsSerialData.forEach(element => {
+        const functionName = element.shift().value;
+        const config = element.map(el => {
+          var _el$value;
+
+          return {
+            value: (_el$value = el.value) !== null && _el$value !== void 0 ? _el$value : false,
+            name: el.name
+          };
+        });
+        const commandData = {
+          functionName,
+          config
+        };
+        let command = new Command(commandData);
+        redemptionEvent.commands.push(command);
+      });
+      return redemptionEvent;
+    }
+
+    function createNewCommandForm(defaults) {
+      const $commandForm = $(CommandForm());
+      const $functionSelect = $commandForm.find('#function-select');
+      $functionSelect.change(function () {
+        const functionName = $(this).val();
+        const preset = COMMAND_PRESETS[functionName];
+        const actions = preset.actions;
+        $commandForm.find('.action-value-group').empty();
+        actions.forEach(action => {
+          const template = CommandFormValue({
+            name: action.name,
+            type: action.type,
+            value: action.value,
+            property: action.property
+          });
+          $commandForm.find('.action-value-group').append(template);
+        });
+      });
+      return $commandForm;
     }
 
     function displayRedemptions(redemptions) {
-        console.log('displaying redemptions');
-        const redemptionTemplates = [];
-        for (const redemptionName in redemptions) {
-            if (redemptions.hasOwnProperty(redemptionName)) {
-                const redemption = redemptions[redemptionName];
-                const redemptionTemplate = RedemptionEvent({
-                    redemptionName,
-                    redemption,
-                });
-                redemptionTemplates.push(redemptionTemplate);
-            }
+      console.log('displaying redemptions');
+      const redemptionTemplates = [];
+
+      for (const redemptionName in redemptions) {
+        if (redemptions.hasOwnProperty(redemptionName)) {
+          const redemption = redemptions[redemptionName];
+          const redemptionTemplate = RedemptionEvent({
+            redemptionName,
+            redemption
+          });
+          let $redemption = $(redemptionTemplate);
+          bindRedemptionButtons(redemptionName, $redemption);
+          redemptionTemplates.push($redemption);
         }
-        $('.redemptions-container')
-            .empty()
-            .append(redemptionTemplates);
+      }
+
+      $('.redemptions-container').empty().append(redemptionTemplates);
+    }
+
+    function bindRedemptionButtons(redemptionName, $redemption) {
+      $redemption.find('#redemption-edit-button').click(function () {
+        loadEditView(redemptionName);
+      });
+      $redemption.find('#redemption-delete-button').click(function () {
+        deleteRedemption();
+      });
+    }
+
+    async function loadEditView(redemptionName) {
+      const redemption = await getRedemption(redemptionName);
+      const $editForm = $('.edit-form-container');
+      $editForm.find('.main-options').empty().html(CreateForm(redemption));
+      $editForm.find('');
+      $editForm.find('.command-options .command-group').empty();
+      redemption.commands.forEach(command => {
+        const $commandForm = createNewCommandForm();
+        $editForm.find('.command-options .command-group').append($commandForm);
+        $commandForm.find('#function-select').val(command.functionName).change(function () {
+          for (const key in command.config) {
+            const $input = $commandForm.find(`input[name=${key}]`);
+            $input.val(command.config[key]);
+
+            if ($input.attr('type') === 'checkbox') {
+              $input.prop('checked', command.config[key]);
+            }
+          }
+        }).change();
+      });
+    }
+
+    function deleteRedemption(redemptionName) {
+      alert('really?');
     }
 
     function displayError(error) {
-        const errorContainer = ErrorContainer({ message: error.message });
-        // check if we have a container on the DOM
-        $('.error-container').remove();
-        $('.errors').prepend(errorContainer);
+      const errorContainer = ErrorContainer({
+        message: error.message
+      }); // check if we have a container on the DOM
+
+      $('.error-container').remove();
+      $('.errors').prepend(errorContainer);
     }
 
-    // Application
     const ctPointsContainerObserver = new MutationObserver(findRewardContainer);
     const ctPointsRewardObserver = new MutationObserver(filterDOMInsertionEvents);
     const handledRewards = new Map();
     const pendingRewards = new Map();
     let resolver = {};
     const DOMReady = new Promise(resolve => {
-        resolver = resolve;
+      resolver = resolve;
     });
-
     function listen() {
-        log('Channel Points DOM Listener Loaded.');
-        // get the reward container
-        ctPointsContainerObserver.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: false,
-            characterData: false,
-        });
-        return DOMReady
-    }
+      log('Channel Points DOM Listener Loaded.'); // get the reward container
 
-    // find reward container from mutation events
+      ctPointsContainerObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false,
+        characterData: false
+      });
+      return DOMReady;
+    } // find reward container from mutation events
+
     function findRewardContainer(mutations) {
-        mutations.forEach(function(mutation) {
-            if (!mutation.addedNodes) return
-            mutation.addedNodes.forEach(function(node) {
-                if (node.className.includes('simplebar-scroll-content')) {
-                    const queue = $(node).find('.reward-queue-body')[0];
-                    if (!queue) return // No reward queue here
-                    log('Rewards container found! Listening for reward events...');
-                    ctPointsContainerObserver.disconnect();
-                    ctPointsRewardObserver.observe(queue, {
-                        childList: true,
-                        subtree: true,
-                        attributes: false,
-                        chatacterData: false,
-                    });
-                    // resolves the deferred promise
-                    resolver();
-                }
-            });
-        });
-    }
+      mutations.forEach(function (mutation) {
+        if (!mutation.addedNodes) return;
+        mutation.addedNodes.forEach(function (node) {
+          if (node.className.includes('simplebar-scroll-content')) {
+            const queue = $(node).find('.reward-queue-body')[0];
+            if (!queue) return; // No reward queue here
 
-    // find DOM events we're interested in
+            log('Rewards container found! Listening for reward events...');
+            ctPointsContainerObserver.disconnect();
+            ctPointsRewardObserver.observe(queue, {
+              childList: true,
+              subtree: true,
+              attributes: false,
+              chatacterData: false
+            }); // resolves the deferred promise
+
+            resolver();
+          }
+        });
+      });
+    } // find DOM events we're interested in
+
+
     function filterDOMInsertionEvents(mutations) {
-        mutations.forEach(function(mutation) {
-            if (!mutation.addedNodes) return
-            mutation.addedNodes.forEach(function(node) {
-                const $redemptionContainer = $(node).find(
-                    '.redemption-card__card-body'
-                );
-                // check if we found a redemption card
-                if ($redemptionContainer.length > 0) {
-                    // we have a redemtpion so now handle it
-                    handleRedemption($redemptionContainer);
-                }
-            });
-        });
-    }
+      mutations.forEach(function (mutation) {
+        if (!mutation.addedNodes) return;
+        mutation.addedNodes.forEach(function (node) {
+          const $redemptionContainer = $(node).find('.redemption-card__card-body'); // check if we found a redemption card
 
-    // used handle the redemption event, accepts jquery object
+          if ($redemptionContainer.length > 0) {
+            // we have a redemtpion so now handle it
+            handleRedemption($redemptionContainer);
+          }
+        });
+      });
+    } // used handle the redemption event, accepts jquery object
+
+
     async function handleRedemption($redemptionContainer) {
-        const redemptionData = await extractAllData($redemptionContainer);
-        if (handledRewards.has(redemptionData.reportId)) {
-            log('Reward', redemptionData.reportId, 'already handled, skipping');
-            return
-        } else {
-            log('Handling redemption', redemptionData);
-            handledRewards.set(redemptionData.reportId);
-            pendingRewards.set(redemptionData.reportId, redemptionData);
-            const result = await sendMessage(redemptionData);
-            console.log(result);
-        }
+      const redemptionData = await extractAllData($redemptionContainer);
+
+      if (handledRewards.has(redemptionData.reportId)) {
+        log('Reward', redemptionData.reportId, 'already handled, skipping');
+        return;
+      } else {
+        log('Handling redemption', redemptionData);
+        handledRewards.set(redemptionData.reportId);
+        pendingRewards.set(redemptionData.reportId, redemptionData);
+        const result = await sendMessage(redemptionData);
+        console.log(result);
+      }
     }
 
     async function sendMessage(redemptionData) {
-        browser.runtime.sendMessage({
-            event: 'redemption',
-            data: {
-                reportId: redemptionData.reportId,
-                rewardName: redemptionData.rewardName,
-            },
-        });
-    }
-
-    // pull everything off the DOM and return an object
-    async function extractAllData($redemptionContainer) {
-        let userName = extractUsername($redemptionContainer);
-        if (!userName) userName = await extractUsernameAsync($redemptionContainer);
-        const rewardName = extractRewardName($redemptionContainer);
-        const response = extractResponse($redemptionContainer);
-        const reportId = extractId($redemptionContainer);
-        const actions = extractActionButtons($redemptionContainer);
-
-        return {
-            userName,
-            rewardName,
-            response,
-            reportId,
-            actions,
+      browser.runtime.sendMessage({
+        event: 'redemption',
+        data: {
+          reportId: redemptionData.reportId,
+          rewardName: redemptionData.rewardName
         }
+      });
+    } // pull everything off the DOM and return an object
+
+
+    async function extractAllData($redemptionContainer) {
+      let userName = extractUsername($redemptionContainer);
+      if (!userName) userName = await extractUsernameAsync($redemptionContainer);
+      const rewardName = extractRewardName($redemptionContainer);
+      const response = extractResponse($redemptionContainer);
+      const reportId = extractId($redemptionContainer);
+      const actions = extractActionButtons($redemptionContainer);
+      return {
+        userName,
+        rewardName,
+        response,
+        reportId,
+        actions
+      };
     }
 
     function extractUsername($redemptionContainer) {
-        // start with the text "USER" and find its div sibling with an h4 descendant
-        const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)');
-        const userName = $rewardUserSibling
-            .siblings('div')
-            .find('h4')
-            .html();
-        return userName
+      // start with the text "USER" and find its div sibling with an h4 descendant
+      const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)');
+      const userName = $rewardUserSibling.siblings('div').find('h4').html();
+      return userName;
     }
 
     function extractUsernameAsync($redemptionContainer) {
-        let promiseResolve, promiseReject;
-        const promise = new Promise(function(resolve, reject) {
-            promiseResolve = resolve;
-            promiseReject = reject;
+      let promiseResolve, promiseReject;
+      const promise = new Promise(function (resolve, reject) {
+        promiseResolve = resolve;
+        promiseReject = reject;
+      });
+      const userObserver = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+          if (!mutation.addedNodes) return;
+          mutation.addedNodes.forEach(function (node) {
+            if (node.nodeName === 'H4') {
+              // We got a username
+              userObserver.disconnect();
+              promiseResolve(node.textContent); // return username
+            }
+          });
         });
-        const userObserver = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (!mutation.addedNodes) return
-                mutation.addedNodes.forEach(function(node) {
-                    if (node.nodeName === 'H4') {
-                        // We got a username
-                        userObserver.disconnect();
-                        promiseResolve(node.textContent); // return username
-                    }
-                });
-            });
-        });
-        // start with the text "USER" and find its div sibling
-        const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)');
-        const userDiv = $rewardUserSibling.siblings('div')[0];
-        // Observe the div until we find an h4 element containing the username
-        userObserver.observe(userDiv, {
-            childList: true,
-            subtree: false,
-            attributes: false,
-            chatacterData: false,
-        });
-        setTimeout(() => {
-            promiseReject('Could not get username');
-        }, 3000);
-        return promise
+      }); // start with the text "USER" and find its div sibling
+
+      const $rewardUserSibling = $redemptionContainer.find('h5:contains(USER)');
+      const userDiv = $rewardUserSibling.siblings('div')[0]; // Observe the div until we find an h4 element containing the username
+
+      userObserver.observe(userDiv, {
+        childList: true,
+        subtree: false,
+        attributes: false,
+        chatacterData: false
+      });
+      setTimeout(() => {
+        promiseReject('Could not get username');
+      }, 3000);
+      return promise;
     }
 
     function extractRewardName($redemptionContainer) {
-        // start with the text "REWARD" and find its h4 sibling
-        const $rewardTitleSibling = $redemptionContainer.find('h5:contains(REWARD)');
-        const rewardName = $rewardTitleSibling.siblings('h4').html();
-        return rewardName
+      // start with the text "REWARD" and find its h4 sibling
+      const $rewardTitleSibling = $redemptionContainer.find('h5:contains(REWARD)');
+      const rewardName = $rewardTitleSibling.siblings('h4').html();
+      return rewardName;
     }
 
     function extractResponse($redemptionContainer) {
-        // start with the text "RESPONSE" and find its h4 sibling
-        const $responseTitleSibling = $redemptionContainer.find(
-            'h5:contains(RESPONSE)'
-        );
-        const response = $responseTitleSibling.siblings('h4').html();
-        return response
+      // start with the text "RESPONSE" and find its h4 sibling
+      const $responseTitleSibling = $redemptionContainer.find('h5:contains(RESPONSE)');
+      const response = $responseTitleSibling.siblings('h4').html();
+      return response;
     }
 
     function extractId($redemptionContainer) {
-        // drill down through report-button element for the id stored on the tooltip div
-        const id = $redemptionContainer
-            .find('.redemption-card__report-button')
-            .find('.mod-buttons')
-            .siblings('.tw-tooltip')
-            .attr('id');
-        return id
+      // drill down through report-button element for the id stored on the tooltip div
+      const id = $redemptionContainer.find('.redemption-card__report-button').find('.mod-buttons').siblings('.tw-tooltip').attr('id');
+      return id;
     }
 
     function extractActionButtons($redemptionContainer) {
-        // look for button elements in the container (should only be two)
-        const $buttons = $redemptionContainer.find('button');
+      // look for button elements in the container (should only be two)
+      const $buttons = $redemptionContainer.find('button'); // return the DOM elements themselves not jquery
 
-        // return the DOM elements themselves not jquery
-        return {
-            resolve: $buttons[0],
-            reject: $buttons[1],
-        }
+      return {
+        resolve: $buttons[0],
+        reject: $buttons[1]
+      };
     }
-
-    let settings = {};
-    let redemptionEvents = {};
-
-    async function connect() {
-        log$2('Channel Points Event Handler Loaded.');
-
-        settings = await loadSettings();
-        redemptionEvents = await loadRedemptionEvents();
-        displayRedemptions(redemptionEvents);
-        return connectToOBS(settings.obs)
-    }
-
-    async function loadSettings() {
-        return Promise.resolve({
-            obs: {
-                address: 'localhost:1234',
-                password: 'noom1234',
-            },
-        })
-    }
-
-    async function loadRedemptionEvents() {
-        return Promise.resolve({
-            'Event: Take On Me': {
-                startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
-                cooldownInSeconds: 600,
-                hold: false, // do we return to the start scene?
-                commands: [
-                    {
-                        function: 'SetCurrentScene',
-                        prettyName: 'Change to scene',
-                        config: {
-                            'scene-name': 'Game Capture (takeonme)',
-                            sceneName: 'GameCapture (takeonme)',
-                        },
-                    },
-                    {
-                        function: 'Wait',
-                        prettyName: 'Pause',
-                        config: { timeInMs: 1300 },
-                    },
-                ],
-            },
-        })
-    }
-
-    async function connectToOBS(obs) {
-        log$2('OBS integration enabled. Attempting connection...');
-        obs.client = new OBSWebSocket();
-        return obs.client.connect(settings.obs)
-    }
-
-    function log$2() {
-        const prefix = '[ctPoints]';
-        const args = Array.prototype.slice.call(arguments);
-        args.unshift('%c' + prefix, 'background: #222; color: #bada55');
-        console.log.apply(console, args);
-    }
-
-    function delay(t, v) {
-        return new Promise(function(resolve) {
-            setTimeout(resolve.bind(null, v), t);
-        })
-    }
-
-    Promise.prototype.delay = function(t) {
-        return this.then(function(v) {
-            return delay(t, v)
-        })
-    };
 
     $().ready(async () => {
-        // start listening on the DOM
-        await listen();
-        console.log('Twitch DOM fully loaded');
-        setupDOM();
+      // start listening on the DOM
+      await listen();
+      console.log('Twitch DOM fully loaded');
+      setupDOM(); // load settings and connect to OBS
 
-        // load settings and connect to OBS
-        try {
-            await connect();
-        } catch (obsError) {
-            const error = new Error(
-                `There was a problem connecting to OBS: ${obsError.code} ${obsError.description}`
-            );
-            displayError(error);
-        }
+      try {
+        await connect();
+      } catch (obsError) {
+        const error = new Error(`There was a problem connecting to OBS: ${obsError.code} ${obsError.description}`);
+        displayError(error);
+      }
     });
 
 }($));

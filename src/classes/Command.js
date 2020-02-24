@@ -1,26 +1,55 @@
-const commandPresets = {
+export const COMMAND_PRESETS = {
     SetCurrentScene: {
+        functionName: 'SetCurrentScene',
         prettyName: 'Change to scene',
-        configPropertyName: 'scene-name',
-        configPropertySafeName: 'sceneName',
+        actions: [
+            {
+                name: 'Scene Name',
+                property: 'scene-name',
+                propertySafe: 'sceneName',
+                type: 'text',
+            },
+        ],
     },
     Wait: {
+        functionName: 'Wait',
         prettyName: 'Pause (ms)',
-        configPropertyName: 'timeInMs',
-        configPropertySafeName: 'timeInMs',
+        actions: [
+            {
+                name: 'Time (ms)',
+                property: 'timeInMs',
+                propertySafe: 'timeInMs',
+                type: 'number',
+            },
+        ],
+    },
+    SetSourceVisibility: {
+        functionName: 'SetSourceVisibility',
+        prettyName: 'Set Source Visibility',
+        actions: [
+            {
+                name: 'Source Name',
+                property: 'item',
+                type: 'text',
+            },
+            {
+                name: 'Visibility',
+                property: 'visibility',
+                type: 'checkbox',
+                value: 'true'
+            },
+        ],
     },
 }
 
 export class Command {
     constructor(attributes) {
-        console.log('new command')
-        this.function = attributes.function
-        this.prettyName = commandPresets[this.function].prettyName
-        this.config = {
-            [commandPresets[this.function].configPropertyName]:
-                attributes.configValue,
-            [commandPresets[this.function].configPropertySafeName]:
-                attributes.configValue,
-        }
+        this.functionName = attributes.functionName
+        const preset = COMMAND_PRESETS[this.functionName]
+        this.config = {}
+        this.prettyName = preset.prettyName
+        attributes.config.forEach(configElement => {
+            this.config[configElement.name] = configElement.value
+        });
     }
 }

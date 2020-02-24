@@ -1,6 +1,7 @@
 import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import { terser } from 'rollup-plugin-terser'
+import babel from 'rollup-plugin-babel';
 var handlebars = require('rollup-plugin-handlebars-plus')
 var rootImport = require('rollup-plugin-root-import')
 
@@ -29,6 +30,9 @@ export default {
             browser: true,
             dedupe: ['svelte'],
         }),
+        babel({
+            exclude: 'node_modules/**'
+          }),
         commonjs(),
 
         rootImport({

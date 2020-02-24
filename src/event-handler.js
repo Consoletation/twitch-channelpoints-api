@@ -4,6 +4,30 @@ import { displayRedemptions } from './dom-manipulator'
 const cooldowns = []
 let settings = {}
 let redemptionEvents = {}
+const storage = window.localStorage
+const REDEMPTIONS_KEY = 'redemptionEvents'
+const STORAGE_KEY = 'settings'
+
+const demoEvent = {
+    redemptionName: 'Event: Take On Me',
+    startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
+    cooldownInSeconds: 600,
+    hold: false, // do we return to the start scene?
+    commands: [
+        {
+            functionName: 'SetCurrentScene',
+            prettyName: 'Change to scene',
+            config: {
+                'scene-name': 'Game Capture (takeonme)',
+            },
+        },
+        {
+            functionName: 'Wait',
+            prettyName: 'Pause',
+            config: { timeInMs: 1300 },
+        },
+    ],
+}
 
 export async function connect() {
     log('Channel Points Event Handler Loaded.')
@@ -23,29 +47,29 @@ export async function loadSettings() {
     })
 }
 
+export async function saveRedemptionEvent(redemption, override) {
+    // not overriding existing settings so check if it exists
+    if(!override){
+        if(redemptionEvents[redemption.redemptionName]){
+            return Promise.reject(new Error('Entry already exists, are you sure you want to replace it?'))
+        }
+    }
+
+    redemptionEvents[redemption.redemptionName] = redemption
+    storage.setItem(REDEMPTIONS_KEY, JSON.stringify(redemptionEvents))
+    displayRedemptions(redemptionEvents)
+    return Promise.resolve(true)
+}
+
 export async function loadRedemptionEvents() {
-    return Promise.resolve({
-        'Event: Take On Me': {
-            startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
-            cooldownInSeconds: 600,
-            hold: false, // do we return to the start scene?
-            commands: [
-                {
-                    function: 'SetCurrentScene',
-                    prettyName: 'Change to scene',
-                    config: {
-                        'scene-name': 'Game Capture (takeonme)',
-                        sceneName: 'GameCapture (takeonme)',
-                    },
-                },
-                {
-                    function: 'Wait',
-                    prettyName: 'Pause',
-                    config: { timeInMs: 1300 },
-                },
-            ],
-        },
-    })
+    const storedItems = JSON.parse(storage.getItem(REDEMPTIONS_KEY))
+    storedItems[demoEvent.redemptionName] = demoEvent
+    console.log(`Loaded redemptions: `, storedItems)
+    return Promise.resolve(storedItems)
+}
+
+export async function getRedemption(redemptionName) {
+    return Promise.resolve(redemptionEvents[redemptionName])
 }
 
 async function connectToOBS(obs) {
@@ -150,6 +174,9 @@ const commands = {
     Wait: config => {
         return delay(config.timeInMs)
     },
+    SetSourceVisibility: config => {
+        return settings.obs.client.send('SetSceneItemProperties', {visible: config.visibility})
+    }
 }
 
 function addToCooldown(redemptionData) {

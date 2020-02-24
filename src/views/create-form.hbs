@@ -1,18 +1,18 @@
-<form class="create-form">
+<form class="form">
     <div class="form-group">
         <label for="redemptionName">Redemption Name</label>
-        <input type="text" name="redemptionName" id="">
+        <input type="text" name="redemptionName" id="" value="{{redemptionName}}">
     </div>
     <div class="form-group">
         <label for="startScene">Start Scene</label>
-        <input type="text" name="startScene" id="">
+        <input type="text" name="startScene" id="" value="{{startScene}}">
     </div>
     <div class="form-group">
-        <label for="cooldownInSeconds">Cooldown</label>
-        <input type="number" name="cooldownInSeconds" id="">
+        <label for="cooldownInSeconds">Cooldown (s)</label>
+        <input type="number" name="cooldownInSeconds" id="" value="{{cooldownInSeconds}}">
     </div>
     <div class="form-group">
         <label for="hold">Hold</label>
-        <input type="checkbox" name="hold" id="" value="true">
+        <input type="checkbox" name="hold" id="" value="true" {{#if hold}}checked {{/if}}>
     </div>
 </form>
