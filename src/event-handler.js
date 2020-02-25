@@ -1,4 +1,4 @@
-import { displayRedemptions } from './dom-manipulator'
+import { displayRedemptions, displaySettings } from './dom-manipulator'
 
 // Application
 const cooldowns = []
@@ -6,6 +6,7 @@ let settings = {}
 let redemptionEvents = {}
 const storage = window.localStorage
 const REDEMPTIONS_KEY = 'redemptionEvents'
+const SETTINGS_KEY = 'redemptionSettings'
 const STORAGE_KEY = 'settings'
 
 const demoEvent = {
@@ -32,19 +33,24 @@ const demoEvent = {
 export async function connect() {
     log('Channel Points Event Handler Loaded.')
 
-    settings = await loadSettings()
+    settings.obs = await loadSettings()
     redemptionEvents = await loadRedemptionEvents()
     displayRedemptions(redemptionEvents)
     return connectToOBS(settings.obs)
 }
 
 export async function loadSettings() {
-    return Promise.resolve({
-        obs: {
-            address: 'localhost:1234',
-            password: 'noom1234',
-        },
-    })
+    const storedSettings = JSON.parse(storage.getItem(SETTINGS_KEY))
+    console.log(`Loaded settings: `, storedSettings)
+    displaySettings(storedSettings)
+    return Promise.resolve(storedSettings)
+}
+
+export async function saveSettings(newSettings) {
+    settings = newSettings
+    storage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+    await connectToOBS(newSettings.obs)
+    log('Connected to OBS!')
 }
 
 export async function saveRedemptionEvent(redemption, override) {
@@ -79,8 +85,7 @@ async function connectToOBS(obs) {
 }
 
 // used handle the redemption event, accepts jquery object
-async function handleRedemption(redemptionData) {
-    debugger
+export async function executeRedemption(redemptionData) {
     try {
         // check if its on cooldown
         if (cooldowns.indexOf(redemptionData.rewardName) >= 0) {
@@ -114,18 +119,12 @@ async function handleRedemption(redemptionData) {
 
 function rejectRedemption(redemptionData) {
     log(`rejecting: ${redemptionData.rewardName}`)
-    return browser.runtime.sendMessage({
-        event: 'rejectRedemption',
-        data: redemptionData,
-    })
+    // click the reject button
 }
 
 function acceptRedemption(redemptionData) {
     log(`accepting: ${redemptionData.rewardName}`)
-    return browser.runtime.sendMessage({
-        event: 'acceptRedemption',
-        data: redemptionData,
-    })
+    // click the accept button
 }
 
 async function executeCommandChain(redemptionData) {
@@ -152,8 +151,10 @@ async function executeCommandChain(redemptionData) {
         index++
     ) {
         const command = redemption.commands[index]
-        await commands[command.function](command.config)
+        await commands[command.functionName](command.config)
     }
+
+
 
     // do we return to the initial scene?
     if (!redemption.hold) {

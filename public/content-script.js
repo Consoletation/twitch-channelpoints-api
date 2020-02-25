@@ -59,10 +59,12 @@
 
     }
 
+    const cooldowns = [];
     let settings = {};
     let redemptionEvents = {};
     const storage = window.localStorage;
     const REDEMPTIONS_KEY = 'redemptionEvents';
+    const SETTINGS_KEY = 'redemptionSettings';
     const demoEvent = {
       redemptionName: 'Event: Take On Me',
       startScene: 'Game Capture',
@@ -86,18 +88,22 @@
     };
     async function connect() {
       log$1('Channel Points Event Handler Loaded.');
-      settings = await loadSettings();
+      settings.obs = await loadSettings();
       redemptionEvents = await loadRedemptionEvents();
       displayRedemptions(redemptionEvents);
       return connectToOBS(settings.obs);
     }
     async function loadSettings() {
-      return Promise.resolve({
-        obs: {
-          address: 'localhost:1234',
-          password: 'noom1234'
-        }
-      });
+      const storedSettings = JSON.parse(storage.getItem(SETTINGS_KEY));
+      console.log(`Loaded settings: `, storedSettings);
+      displaySettings(storedSettings);
+      return Promise.resolve(storedSettings);
+    }
+    async function saveSettings(newSettings) {
+      settings = newSettings;
+      storage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      await connectToOBS(newSettings.obs);
+      log$1('Connected to OBS!');
     }
     async function saveRedemptionEvent(redemption, override) {
       // not overriding existing settings so check if it exists
@@ -127,6 +133,110 @@
       obs.client = new OBSWebSocket();
       return obs.client.connect(settings.obs);
     } // used handle the redemption event, accepts jquery object
+
+
+    async function executeRedemption(redemptionData) {
+      try {
+        // check if its on cooldown
+        if (cooldowns.indexOf(redemptionData.rewardName) >= 0) {
+          rejectRedemption(redemptionData);
+          throw new Error(`Reward, ${redemptionData.rewardName} is on cooldown, rejecting`);
+        } else {
+          // immediately add to cooldown
+          addToCooldown(redemptionData);
+        }
+
+        try {
+          // execute the reward function
+          await executeCommandChain(redemptionData);
+          acceptRedemption(redemptionData);
+        } catch (e) {
+          log$1('rejecting: ' + e.message); // need to remove it from the cooldowns because it didn't actually run
+
+          removeFromCooldown(redemptionData);
+          rejectRedemption(redemptionData);
+        }
+      } catch (e) {
+        // unexpected reward failure!
+        console.error(e.message); // need to remove it from the cooldowns because it didn't actually run
+
+        removeFromCooldown(redemptionData);
+        rejectRedemption(redemptionData);
+      }
+    }
+
+    function rejectRedemption(redemptionData) {
+      log$1(`rejecting: ${redemptionData.rewardName}`); // click the reject button
+    }
+
+    function acceptRedemption(redemptionData) {
+      log$1(`accepting: ${redemptionData.rewardName}`); // click the accept button
+    }
+
+    async function executeCommandChain(redemptionData) {
+      const redemption = redemptionEvents[redemptionData.rewardName];
+      const initialScene = await settings.obs.client.send('GetCurrentScene'); // check if the redemption exists
+
+      if (!redemption) {
+        throw new Error(`Received unhandled reward: ${redemptionData.rewardName}, ignoring`);
+      } // does the user require a specific scene to be active to start
+
+
+      if (redemption.startScene && initialScene.name !== redemption.startScene) {
+        throw new Error(`Not on correct start scene, requires '${redemption.startScene}' but have '${initialScene.name}'`);
+      } // execute all of the commands in series
+
+
+      for (let index = 0, len = redemption.commands.length; index < len; index++) {
+        const command = redemption.commands[index];
+        await commands[command.functionName](command.config);
+      } // do we return to the initial scene?
+
+
+      if (!redemption.hold) {
+        await settings.obs.client.send('SetCurrentScene', {
+          'scene-name': initialScene.name
+        });
+      }
+
+      console.log('finished execution chain');
+      return true;
+    }
+
+    const commands = {
+      SetCurrentScene: config => {
+        return settings.obs.client.send('SetCurrentScene', config);
+      },
+      Wait: config => {
+        return delay(config.timeInMs);
+      },
+      SetSourceVisibility: config => {
+        return settings.obs.client.send('SetSceneItemProperties', {
+          visible: config.visibility
+        });
+      }
+    };
+
+    function addToCooldown(redemptionData) {
+      const reward = redemptionEvents[redemptionData.rewardName];
+      const name = redemptionData.rewardName;
+      const cooldown = reward.cooldownInSeconds;
+      cooldowns.push(name);
+      setTimeout(() => {
+        removeFromCooldown(redemptionData);
+      }, cooldown * 1000);
+      log$1('Added ', name + ' to cooldowns');
+    }
+
+    function removeFromCooldown(redemptionData) {
+      const name = redemptionData.rewardName;
+      const index = cooldowns.indexOf(name);
+
+      if (index >= 0) {
+        cooldowns.splice(index, 1);
+        log$1('Removed ', name + ' from cooldowns');
+      }
+    }
 
     function log$1() {
       const prefix = '[ctPoints]';
@@ -1617,7 +1727,7 @@
         };
 
       return "<div class=\"error-container\">"
-        + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"message") || (depth0 != null ? lookupProperty(depth0,"message") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"message","hash":{},"data":data,"loc":{"start":{"line":1,"column":29},"end":{"line":1,"column":40}}}) : helper)))
+        + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"message") || (depth0 != null ? lookupProperty(depth0,"message") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"message","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":1,"column":29},"end":{"line":1,"column":40}}}) : helper)))
         + "</div>";
     },"useData":true});
     function ErrorContainer(data, options, asString) {
@@ -1626,14 +1736,22 @@
     }
 
     var Template$1 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
-        return "<div class=\"app-container\">\r\n    <div class=\"errors\"></div>\r\n    <div class=\"button-container\" id=\"create-event-button\"><button>Create Event</button></div>\r\n    <div class=\"create-form-container\">\r\n        <h3>New Redemption Event</h3>\r\n        <div class=\"main-options\"></div>\r\n        <div class=\"command-options\">\r\n            <label>Commands:</label>\r\n            <button type=\"button\" id=\"create-form-create-command\">New Command</button>\r\n            <div class='command-group'></div>\r\n        </div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"create-form-submit-button\">Create Redemption Event</button>\r\n        </div>\r\n    </div>\r\n    <h3>Edit Redemption Event</h3>\r\n    <div class=\"edit-form-container\">\r\n        <div class=\"main-options\"></div>\r\n        <div class=\"command-options\">\r\n            <label>Commands:</label>\r\n            <button type=\"button\" id=\"edit-form-create-command\">New Command</button>\r\n            <div class='command-group'></div>\r\n        </div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"edit-form-submit-button\">Save Changes</button>\r\n        </div>\r\n    </div>\r\n    <h3>Redemptions</h3>\r\n    <div class=\"redemptions-container\">redemptions in here</div>\r\n</div>";
+        return "<div class=\"app-container\">\r\n    <div class=\"errors\"></div>\r\n    <div class=\"button-container\" id=\"create-event-button\"><button>Create Event</button></div>\r\n    <div class=\"settings-form-container\">\r\n        <h3>Settings</h3>\r\n        <div class=\"settings\"></div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"settings-form-submit-button\">Save</button>\r\n        </div>\r\n    </div>\r\n    <div class=\"create-form-container\">\r\n        <h3>New Redemption Event</h3>\r\n        <div class=\"main-options\"></div>\r\n        <div class=\"command-options\">\r\n            <label>Commands:</label>\r\n            <button type=\"button\" id=\"create-form-create-command\">New Command</button>\r\n            <div class='command-group'></div>\r\n        </div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"create-form-submit-button\">Create Redemption Event</button>\r\n        </div>\r\n    </div>\r\n    <h3>Edit Redemption Event</h3>\r\n    <div class=\"edit-form-container\">\r\n        <div class=\"main-options\"></div>\r\n        <div class=\"command-options\">\r\n            <label>Commands:</label>\r\n            <button type=\"button\" id=\"edit-form-create-command\">New Command</button>\r\n            <div class='command-group'></div>\r\n        </div>\r\n        <div class=\"button-group\">\r\n            <button type=\"button\" id=\"edit-form-submit-button\">Save Changes</button>\r\n        </div>\r\n    </div>\r\n    <h3>Redemptions</h3>\r\n    <div class=\"redemptions-container\">redemptions in here</div>\r\n</div>";
     },"useData":true});
     function AppContainer(data, options, asString) {
       var html = Template$1(data, options);
       return (asString || false) ? html : $$1(html);
     }
 
-    var Template$2 = Handlebars.template({"1":function(container,depth0,helpers,partials,data) {
+    var Template$2 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+        return "<div class=\"app-button-container\">\r\n    <button id=\"app-button\">(bp)</button>\r\n</div>";
+    },"useData":true});
+    function AppButton(data, options, asString) {
+      var html = Template$2(data, options);
+      return (asString || false) ? html : $$1(html);
+    }
+
+    var Template$3 = Handlebars.template({"1":function(container,depth0,helpers,partials,data) {
         var stack1, lookupProperty = container.lookupProperty || function(parent, propertyName) {
             if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
               return parent[propertyName];
@@ -1644,7 +1762,7 @@
       return "        <div>\r\n            - "
         + container.escapeExpression(container.lambda((depth0 != null ? lookupProperty(depth0,"prettyName") : depth0), depth0))
         + ":\r\n"
-        + ((stack1 = lookupProperty(helpers,"each").call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? lookupProperty(depth0,"config") : depth0),{"name":"each","hash":{},"fn":container.program(2, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":13,"column":12},"end":{"line":15,"column":21}}})) != null ? stack1 : "")
+        + ((stack1 = lookupProperty(helpers,"each").call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? lookupProperty(depth0,"config") : depth0),{"name":"each","hash":{},"fn":container.program(2, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":13,"column":12},"end":{"line":15,"column":21}}})) != null ? stack1 : "")
         + "        </div>\r\n";
     },"2":function(container,depth0,helpers,partials,data) {
         return "                "
@@ -1659,7 +1777,7 @@
         };
 
       return "<div class=\"redemption-container\">\r\n    <button type=\"button\" id=\"redemption-edit-button\">Edit Redemption Event</button>\r\n    <button type=\"button\" id=\"redemption-delete-button\">Delete Redemption Event</button>\r\n    <div><h4>"
-        + alias2(((helper = (helper = lookupProperty(helpers,"redemptionName") || (depth0 != null ? lookupProperty(depth0,"redemptionName") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"redemptionName","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":4,"column":13},"end":{"line":4,"column":31}}}) : helper)))
+        + alias2(((helper = (helper = lookupProperty(helpers,"redemptionName") || (depth0 != null ? lookupProperty(depth0,"redemptionName") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"redemptionName","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":4,"column":13},"end":{"line":4,"column":31}}}) : helper)))
         + "</h4></div>\r\n    <div>cooldown: "
         + alias2(alias3(((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"cooldownInSeconds") : stack1), depth0))
         + "</div>\r\n    <div>hold: "
@@ -1667,15 +1785,34 @@
         + "</div>\r\n    <div>start scene: "
         + alias2(alias3(((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"startScene") : stack1), depth0))
         + "</div>\r\n    <div>\r\n        <div>commands: </div>\r\n"
-        + ((stack1 = lookupProperty(helpers,"each").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"commands") : stack1),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":10,"column":8},"end":{"line":17,"column":17}}})) != null ? stack1 : "")
+        + ((stack1 = lookupProperty(helpers,"each").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"redemption") : depth0)) != null ? lookupProperty(stack1,"commands") : stack1),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":10,"column":8},"end":{"line":17,"column":17}}})) != null ? stack1 : "")
         + "    </div>\r\n</div>";
     },"useData":true});
     function RedemptionEvent(data, options, asString) {
-      var html = Template$2(data, options);
+      var html = Template$3(data, options);
       return (asString || false) ? html : $$1(html);
     }
 
-    var Template$3 = Handlebars.template({"1":function(container,depth0,helpers,partials,data) {
+    var Template$4 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+        var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+            if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+              return parent[propertyName];
+            }
+            return undefined
+        };
+
+      return "<form class=\"form\">\r\n    <div class=\"form-group\">\r\n        <label for=\"url\">URL</label>\r\n        <input type=\"text\" name=\"address\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"address") || (depth0 != null ? lookupProperty(depth0,"address") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"address","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":4,"column":55},"end":{"line":4,"column":66}}}) : helper)))
+        + "\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"password\">Password</label>\r\n        <input type=\"text\" name=\"password\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"password") || (depth0 != null ? lookupProperty(depth0,"password") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"password","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":8,"column":56},"end":{"line":8,"column":68}}}) : helper)))
+        + "\">\r\n    </div>\r\n</form>";
+    },"useData":true});
+    function SettingsForm(data, options, asString) {
+      var html = Template$4(data, options);
+      return (asString || false) ? html : $$1(html);
+    }
+
+    var Template$5 = Handlebars.template({"1":function(container,depth0,helpers,partials,data) {
         return "checked ";
     },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
         var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
@@ -1685,30 +1822,32 @@
             return undefined
         };
 
-      return "<form class=\"form\">\r\n    <div class=\"form-group\">\r\n        <label for=\"redemptionName\">Redemption Name</label>\r\n        <input type=\"text\" name=\"redemptionName\" id=\"\" value=\""
-        + alias4(((helper = (helper = lookupProperty(helpers,"redemptionName") || (depth0 != null ? lookupProperty(depth0,"redemptionName") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"redemptionName","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":4,"column":62},"end":{"line":4,"column":80}}}) : helper)))
+      return "<form class=\"form\">\r\n    <input type=\"text\" name=\"redemptionId\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"redemptionId") || (depth0 != null ? lookupProperty(depth0,"redemptionId") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"redemptionId","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":2,"column":56},"end":{"line":2,"column":72}}}) : helper)))
+        + "\">\r\n    <div class=\"form-group\">\r\n        <label for=\"redemptionName\">Redemption Name</label>\r\n        <input type=\"text\" name=\"redemptionName\" id=\"\" value=\""
+        + alias4(((helper = (helper = lookupProperty(helpers,"redemptionName") || (depth0 != null ? lookupProperty(depth0,"redemptionName") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"redemptionName","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":5,"column":62},"end":{"line":5,"column":80}}}) : helper)))
         + "\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"startScene\">Start Scene</label>\r\n        <input type=\"text\" name=\"startScene\" id=\"\" value=\""
-        + alias4(((helper = (helper = lookupProperty(helpers,"startScene") || (depth0 != null ? lookupProperty(depth0,"startScene") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"startScene","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":8,"column":58},"end":{"line":8,"column":72}}}) : helper)))
+        + alias4(((helper = (helper = lookupProperty(helpers,"startScene") || (depth0 != null ? lookupProperty(depth0,"startScene") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"startScene","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":9,"column":58},"end":{"line":9,"column":72}}}) : helper)))
         + "\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"cooldownInSeconds\">Cooldown (s)</label>\r\n        <input type=\"number\" name=\"cooldownInSeconds\" id=\"\" value=\""
-        + alias4(((helper = (helper = lookupProperty(helpers,"cooldownInSeconds") || (depth0 != null ? lookupProperty(depth0,"cooldownInSeconds") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"cooldownInSeconds","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":12,"column":67},"end":{"line":12,"column":88}}}) : helper)))
+        + alias4(((helper = (helper = lookupProperty(helpers,"cooldownInSeconds") || (depth0 != null ? lookupProperty(depth0,"cooldownInSeconds") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"cooldownInSeconds","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":13,"column":67},"end":{"line":13,"column":88}}}) : helper)))
         + "\">\r\n    </div>\r\n    <div class=\"form-group\">\r\n        <label for=\"hold\">Hold</label>\r\n        <input type=\"checkbox\" name=\"hold\" id=\"\" value=\"true\" "
-        + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"hold") : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":16,"column":62},"end":{"line":16,"column":89}}})) != null ? stack1 : "")
+        + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"hold") : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":17,"column":62},"end":{"line":17,"column":89}}})) != null ? stack1 : "")
         + ">\r\n    </div>\r\n</form>";
     },"useData":true});
     function CreateForm(data, options, asString) {
-      var html = Template$3(data, options);
+      var html = Template$5(data, options);
       return (asString || false) ? html : $$1(html);
     }
 
-    var Template$4 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var Template$6 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
         return "<form class=\"command-form\">\r\n    <div class=\"form-group\">\r\n        <label for=\"function\">Action Command</label>\r\n        <select name=\"function\" id=\"function-select\">\r\n            <option value=\"\" disabled selected hidden>Select an action</option>\r\n            <option value=\"SetCurrentScene\">Change to Scene</option>\r\n            <option value=\"Wait\">Pause (ms)</option>\r\n            <option value=\"SetSourceVisibility\">Set Source Visibility</option>\r\n        </select>\r\n    </div>\r\n\r\n    <div class=\"form-group action-value-group\">\r\n    </div>\r\n</form>";
     },"useData":true});
     function CommandForm(data, options, asString) {
-      var html = Template$4(data, options);
+      var html = Template$6(data, options);
       return (asString || false) ? html : $$1(html);
     }
 
-    var Template$5 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var Template$7 = Handlebars.template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
         var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
             if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
               return parent[propertyName];
@@ -1717,17 +1856,17 @@
         };
 
       return "<label for=\"actionValue\">"
-        + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":1,"column":25},"end":{"line":1,"column":33}}}) : helper)))
+        + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":1,"column":25},"end":{"line":1,"column":33}}}) : helper)))
         + "</label>\r\n<input type=\""
-        + alias4(((helper = (helper = lookupProperty(helpers,"type") || (depth0 != null ? lookupProperty(depth0,"type") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"type","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":2,"column":13},"end":{"line":2,"column":21}}}) : helper)))
+        + alias4(((helper = (helper = lookupProperty(helpers,"type") || (depth0 != null ? lookupProperty(depth0,"type") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"type","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":2,"column":13},"end":{"line":2,"column":21}}}) : helper)))
         + "\" name=\""
-        + alias4(((helper = (helper = lookupProperty(helpers,"property") || (depth0 != null ? lookupProperty(depth0,"property") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"property","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":2,"column":29},"end":{"line":2,"column":41}}}) : helper)))
+        + alias4(((helper = (helper = lookupProperty(helpers,"property") || (depth0 != null ? lookupProperty(depth0,"property") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"property","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":2,"column":29},"end":{"line":2,"column":41}}}) : helper)))
         + "\" id=\"\" value=\""
-        + alias4(((helper = (helper = lookupProperty(helpers,"value") || (depth0 != null ? lookupProperty(depth0,"value") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"value","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\errors.hbs","start":{"line":2,"column":56},"end":{"line":2,"column":65}}}) : helper)))
+        + alias4(((helper = (helper = lookupProperty(helpers,"value") || (depth0 != null ? lookupProperty(depth0,"value") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"value","hash":{},"data":data,"loc":{"source":"D:\\Documents\\GitHub\\twitch-channelpoints-api\\src\\views\\app.hbs","start":{"line":2,"column":56},"end":{"line":2,"column":65}}}) : helper)))
         + "\">";
     },"useData":true});
     function CommandFormValue(data, options, asString) {
-      var html = Template$5(data, options);
+      var html = Template$7(data, options);
       return (asString || false) ? html : $$1(html);
     }
 
@@ -1737,14 +1876,18 @@
       console.log('setting up the DOM');
       $('.app-container').remove();
       $('.reward-queue-body').prepend(AppContainer());
+      $('*[data-test-selector="reward-queue-custom-reward-button"').prepend(AppButton());
       $('.create-form-container .main-options').prepend(CreateForm());
+      $('.settings-form-container .settings').prepend(SettingsForm());
       $('.create-form-container .command-group').append(createNewCommandForm());
       bindClicks();
     }
 
     function bindClicks() {
+      $('#app-button').click(showCreateView);
       $('#create-event-button').click(showCreateView);
       $('#create-form-submit-button').click(createNewRedemptionEvent);
+      $('#settings-form-submit-button').click(parseSettingsFormAndSave);
       $('#create-form-create-command').click(() => {
         $('.create-form-container .command-group').append(createNewCommandForm());
       });
@@ -1756,8 +1899,21 @@
       });
     }
 
-    function showCreateView() {
+    function showCreateView(event) {
+      event.preventDefault();
       alert('making new alert now');
+      return false;
+    }
+
+    function parseSettingsFormAndSave() {
+      const settings = {}; // grab the values out of the form
+
+      const $formContainer = $('.settings-form-container');
+      const optionsSerialData = $formContainer.find('.form').serializeArray();
+      optionsSerialData.forEach(element => {
+        settings[element.name] = element.value;
+      });
+      saveSettings(settings);
     }
 
     async function createNewRedemptionEvent() {
@@ -1853,6 +2009,13 @@
       }
 
       $('.redemptions-container').empty().append(redemptionTemplates);
+    }
+    function displaySettings(settings) {
+      const $settingsForm = $('.settings-form-container .form');
+
+      for (const key in settings) {
+        $settingsForm.find(`input[name=${key}]`).val(settings[key]);
+      }
     }
 
     function bindRedemptionButtons(redemptionName, $redemption) {
@@ -1968,19 +2131,9 @@
         log('Handling redemption', redemptionData);
         handledRewards.set(redemptionData.reportId);
         pendingRewards.set(redemptionData.reportId, redemptionData);
-        const result = await sendMessage(redemptionData);
+        const result = await executeRedemption(redemptionData);
         console.log(result);
       }
-    }
-
-    async function sendMessage(redemptionData) {
-      browser.runtime.sendMessage({
-        event: 'redemption',
-        data: {
-          reportId: redemptionData.reportId,
-          rewardName: redemptionData.rewardName
-        }
-      });
     } // pull everything off the DOM and return an object
 
 
@@ -2079,6 +2232,7 @@
 
       try {
         await connect();
+        log('Connected to OBS!');
       } catch (obsError) {
         const error = new Error(`There was a problem connecting to OBS: ${obsError.code} ${obsError.description}`);
         displayError(error);

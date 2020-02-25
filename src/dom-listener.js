@@ -1,5 +1,6 @@
 import { log } from './helpers'
 import { setupDOM } from './dom-manipulator'
+import { executeRedemption } from './event-handler'
 
 // Application
 const ctPointsContainerObserver = new MutationObserver(findRewardContainer)
@@ -73,19 +74,9 @@ async function handleRedemption($redemptionContainer) {
         log('Handling redemption', redemptionData)
         handledRewards.set(redemptionData.reportId)
         pendingRewards.set(redemptionData.reportId, redemptionData)
-        const result = await sendMessage(redemptionData)
+        const result = await executeRedemption(redemptionData)
         console.log(result)
     }
-}
-
-async function sendMessage(redemptionData) {
-    browser.runtime.sendMessage({
-        event: 'redemption',
-        data: {
-            reportId: redemptionData.reportId,
-            rewardName: redemptionData.rewardName,
-        },
-    })
 }
 
 // pull everything off the DOM and return an object

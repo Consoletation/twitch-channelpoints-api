@@ -1,0 +1,10 @@
+.app-button-container {
+    position: relative;
+}
+
+#app-button {
+    position: absolute;
+    margin: 1rem;    
+    top: 0px;
+    right: 0px;
+}

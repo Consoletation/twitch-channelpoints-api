@@ -1,10 +1,12 @@
 import { log } from './helpers'
 import { Command, COMMAND_PRESETS } from './classes/Command'
-import { saveRedemptionEvent, getRedemption } from './event-handler'
+import { saveRedemptionEvent, getRedemption, saveSettings } from './event-handler'
 // templates
 import ErrorContainer from './views/errors.hbs'
 import AppContainer from './views/app.hbs'
+import AppButton from './views/app-button.hbs'
 import RedemptionEvent from './views/redemption.hbs'
+import SettingsForm from './views/settings-form.hbs'
 import CreateForm from './views/create-form.hbs'
 import CommandForm from './views/command-form.hbs'
 import CommandFormValue from './views/command-form-value.hbs'
@@ -16,15 +18,19 @@ export function setupDOM() {
     console.log('setting up the DOM')
     $('.app-container').remove()
     $('.reward-queue-body').prepend(AppContainer())
+    $('*[data-test-selector="reward-queue-custom-reward-button"').prepend(AppButton())
     $('.create-form-container .main-options').prepend(CreateForm())
+    $('.settings-form-container .settings').prepend(SettingsForm())
     $('.create-form-container .command-group').append(createNewCommandForm())
 
     bindClicks()
 }
 
 function bindClicks() {
+    $('#app-button').click(showCreateView)
     $('#create-event-button').click(showCreateView)
     $('#create-form-submit-button').click(createNewRedemptionEvent)
+    $('#settings-form-submit-button').click(parseSettingsFormAndSave)
     $('#create-form-create-command').click(() => {
         $('.create-form-container .command-group').append(
             createNewCommandForm()
@@ -40,8 +46,21 @@ function bindClicks() {
     })
 }
 
-function showCreateView() {
+function showCreateView(event) {
+    event.preventDefault()
     alert('making new alert now')
+    return false
+}
+
+function parseSettingsFormAndSave() {
+    const settings = {}
+    // grab the values out of the form
+    const $formContainer = $('.settings-form-container')
+    const optionsSerialData = $formContainer.find('.form').serializeArray()
+    optionsSerialData.forEach(element => {
+        settings[element.name] = element.value
+    })
+    saveSettings(settings)
 }
 
 async function createNewRedemptionEvent() {
@@ -139,6 +158,13 @@ export function displayRedemptions(redemptions) {
     $('.redemptions-container')
         .empty()
         .append(redemptionTemplates)
+}
+
+export function displaySettings(settings) {
+    const $settingsForm = $('.settings-form-container .form')
+    for (const key in settings) {
+        $settingsForm.find(`input[name=${key}]`).val(settings[key])
+    }
 }
 
 function bindRedemptionButtons(redemptionName, $redemption) {
