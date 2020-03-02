@@ -1,10 +1,109 @@
-.app-button-container {
-    position: relative;
+.app-container {
+    position: absolute;
+    height: 50vh;
+    width: 50vh;
+    min-height: 480px;
+    min-width: 480px;
+    background-color: #35353A;
+    color: white;
+    z-index: 1000;
 }
 
-#app-button {
+.app-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+    background-color: rgba(0,0,0, 0.2);
+}
+
+.errors {
+    display: none;
+    padding: 8px;
+    background-color: rgba(214, 111, 13, 0.5);
+    border-radius: 5px;
+}
+
+.app-content {
+    padding: 8px;
+    height: calc(50vh - 34px);
+    min-height: calc(480px - 34px);
+    overflow: hidden;
+    overflow-y: auto;
+}
+
+.app-container {
+    display: none;
+}
+.create-form-container {
+    display: none;
+}
+
+.edit-form-container {
+    display: none
+}
+
+.redemptions-container {
+    display: none;
+}
+
+.section-container {
+    margin-bottom: 16px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.app-button-container {
+    position: relative;
+    z-index: 1000;
+}
+
+.app-button {
     position: absolute;
     margin: 1rem;    
     top: 0px;
     right: 0px;
+    border: 1px solid rgba(255,255,255, 0.1);
+    border-radius: 8px;
+    padding: 2px 6px 2px 6px;
+}
+
+.app-buttons {
+    padding: 2px 6px 2px 6px;
+    background-color: rgba(255,255,255, 0.1);
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255, 0.1);
+}
+
+.form-group {
+    display: flex;
+    margin-bottom: 4px;
+}
+
+.form-group label {
+    margin-right: 32px;
+    width: 120px;
+}
+
+.form-group .flex-grow {
+    flex-grow: 1;
+}
+
+.command-options {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    margin: 4px;
+}
+.command-form {
+    padding: 8px 16px 8px 16px;
+}
+
+.command-form:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.command-form-buttons {
+    margin-left: 16px;
+    margin-top: 8px
 }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "Channel Points Redemptions",
+  "name": "Better Points",
   "version": "1.0",
-  "description": "Listens for channel point redemptions on twitch and allows for custom handlers",
+  "description": "Control OBS with Twitch Channel Point redemption's.",
   "content_scripts": [
     {
       "matches": [

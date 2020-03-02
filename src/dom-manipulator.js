@@ -1,6 +1,10 @@
 import { log } from './helpers'
 import { Command, COMMAND_PRESETS } from './classes/Command'
-import { saveRedemptionEvent, getRedemption, saveSettings } from './event-handler'
+import {
+    saveRedemptionEvent,
+    getRedemption,
+    saveSettings,
+} from './event-handler'
 // templates
 import ErrorContainer from './views/errors.hbs'
 import AppContainer from './views/app.hbs'
@@ -18,7 +22,9 @@ export function setupDOM() {
     console.log('setting up the DOM')
     $('.app-container').remove()
     $('.reward-queue-body').prepend(AppContainer())
-    $('*[data-test-selector="reward-queue-custom-reward-button"').prepend(AppButton())
+    $('*[data-test-selector="reward-queue-custom-reward-button"').prepend(
+        AppButton()
+    )
     $('.create-form-container .main-options').prepend(CreateForm())
     $('.settings-form-container .settings').prepend(SettingsForm())
     $('.create-form-container .command-group').append(createNewCommandForm())
@@ -27,8 +33,8 @@ export function setupDOM() {
 }
 
 function bindClicks() {
-    $('#app-button').click(showCreateView)
-    $('#create-event-button').click(showCreateView)
+    $('.app-button').click(showCreateView)
+    $('#close-app-button').click(toggleApp)
     $('#create-form-submit-button').click(createNewRedemptionEvent)
     $('#settings-form-submit-button').click(parseSettingsFormAndSave)
     $('#create-form-create-command').click(() => {
@@ -37,19 +43,46 @@ function bindClicks() {
         )
     })
     $('#edit-form-create-command').click(() => {
-        $('.edit-form-container .command-group').append(
-            createNewCommandForm()
-        )
+        $('.edit-form-container .command-group').append(createNewCommandForm())
     })
     $('#edit-form-submit-button').click(() => {
         editRedemptionEvent()
     })
 }
 
-function showCreateView(event) {
+async function showCreateView(event) {
     event.preventDefault()
-    alert('making new alert now')
-    return false
+    event.stopPropagation()
+    toggleApp()
+    hideOtherForms()
+    // get the surrounding button parent and find the event name
+    const $parentButton = $(event.target).parents('button').first()
+    const redemptionName = $parentButton.find('.reward-queue-sidebar__reward-title').text()
+    const redemption = await getRedemption(redemptionName) ?? null
+    if(redemption) {
+        loadEditView(redemptionName)
+        return false
+    }else {
+        // show the create view with the redemption name already filled out
+        const $createForm = $('.create-form-container')
+        $createForm
+            .find('.main-options')
+            .empty()
+            .html(CreateForm({redemptionName}))
+
+        $createForm.show()
+        
+        return false
+    }
+}
+
+function toggleApp() {
+    $('.app-container').toggle()
+}
+
+function hideOtherForms() {
+    $('.create-form-container').hide()
+    $('.edit-form-container').hide()
 }
 
 function parseSettingsFormAndSave() {
@@ -178,13 +211,16 @@ function bindRedemptionButtons(redemptionName, $redemption) {
 }
 
 async function loadEditView(redemptionName) {
+    hideOtherForms()
     const redemption = await getRedemption(redemptionName)
     const $editForm = $('.edit-form-container')
     $editForm
         .find('.main-options')
         .empty()
         .html(CreateForm(redemption))
-        $editForm.find('')
+
+        $editForm.show()
+
     $editForm.find('.command-options .command-group').empty()
     redemption.commands.forEach(command => {
         const $commandForm = createNewCommandForm()
@@ -196,7 +232,7 @@ async function loadEditView(redemptionName) {
                 for (const key in command.config) {
                     const $input = $commandForm.find(`input[name=${key}]`)
                     $input.val(command.config[key])
-                    if($input.attr('type')==='checkbox'){
+                    if ($input.attr('type') === 'checkbox') {
                         $input.prop('checked', command.config[key])
                     }
                 }
@@ -214,4 +250,9 @@ export function displayError(error) {
     // check if we have a container on the DOM
     $('.error-container').remove()
     $('.errors').prepend(errorContainer)
+    $('.errors').show(100)
+
+    setTimeout(() => {
+        $('.errors').hide(100)
+    }, 5000)
 }

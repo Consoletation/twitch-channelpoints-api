@@ -1,37 +1,42 @@
 <div class="app-container">
-    <div class="errors"></div>
-    <div class="button-container" id="create-event-button"><button>Create Event</button></div>
-    <div class="settings-form-container">
-        <h3>Settings</h3>
-        <div class="settings"></div>
-        <div class="button-group">
-            <button type="button" id="settings-form-submit-button">Save</button>
+    <div class="app-bar">Better Points <button id="close-app-button">Close</button></div>
+    <div class="app-content">
+        <div class="errors"></div>
+        <div class="settings-form-container section-container">
+            <h4>Settings</h4>
+            <div class="settings"></div>
+            <div class="button-group">
+                <button type="button" id="settings-form-submit-button" class="app-buttons">Save</button>
+            </div>
+        </div>
+        <div class="create-form-container section-container">
+            <h4>New Redemption Event</h4>
+            <div class="main-options"></div>
+            <div class="command-options">
+                <h5>Commands</h5>
+                <div class='command-group'></div>
+                <button type="button" id="create-form-create-command" class="app-buttons command-form-buttons">New</button>
+            </div>
+            <div class="button-group">
+                <button type="button" id="create-form-submit-button" class="app-buttons">Save Redemption Event</button>
+            </div>
+        </div>
+        <div class="edit-form-container section-container">
+            <h4>Edit Redemption Event</h4>
+            <div class="main-options"></div>
+            <div class="command-options">
+                <h5>Commands</h5>
+                <div class='command-group'></div>
+                <button type="button" id="edit-form-create-command" class="app-buttons command-form-buttons">New</button>
+            </div>
+            <div class="button-group">
+                <button type="button" id="edit-form-submit-button" class="app-buttons">Save Changes</button>
+            </div>
+        </div>
+        <div class="redemptions-container section-container">
+            <h4>Redemptions</h4>
+
         </div>
     </div>
-    <div class="create-form-container">
-        <h3>New Redemption Event</h3>
-        <div class="main-options"></div>
-        <div class="command-options">
-            <label>Commands:</label>
-            <button type="button" id="create-form-create-command">New Command</button>
-            <div class='command-group'></div>
-        </div>
-        <div class="button-group">
-            <button type="button" id="create-form-submit-button">Create Redemption Event</button>
-        </div>
-    </div>
-    <h3>Edit Redemption Event</h3>
-    <div class="edit-form-container">
-        <div class="main-options"></div>
-        <div class="command-options">
-            <label>Commands:</label>
-            <button type="button" id="edit-form-create-command">New Command</button>
-            <div class='command-group'></div>
-        </div>
-        <div class="button-group">
-            <button type="button" id="edit-form-submit-button">Save Changes</button>
-        </div>
-    </div>
-    <h3>Redemptions</h3>
-    <div class="redemptions-container">redemptions in here</div>
+
 </div>

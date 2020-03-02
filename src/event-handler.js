@@ -1,4 +1,4 @@
-import { displayRedemptions, displaySettings } from './dom-manipulator'
+import { displayRedemptions, displaySettings, displayError } from './dom-manipulator'
 
 // Application
 const cooldowns = []
@@ -9,6 +9,10 @@ const REDEMPTIONS_KEY = 'redemptionEvents'
 const SETTINGS_KEY = 'redemptionSettings'
 const STORAGE_KEY = 'settings'
 
+const DEFAULT_SETTINGS = {
+    address: 'localhost:4444',
+    password: ''
+}
 const demoEvent = {
     redemptionName: 'Event: Take On Me',
     startScene: 'Game Capture', // if start scene is specified then the alert only plays when OBS is on that scene
@@ -30,6 +34,18 @@ const demoEvent = {
     ],
 }
 
+const commands = {
+    SetCurrentScene: config => {
+        return settings.obs.client.send('SetCurrentScene', config)
+    },
+    Wait: config => {
+        return delay(config.timeInMs)
+    },
+    SetSourceVisibility: config => {
+        return settings.obs.client.send('SetSceneItemProperties', {visible: config.visibility})
+    }
+}
+
 export async function connect() {
     log('Channel Points Event Handler Loaded.')
 
@@ -40,17 +56,25 @@ export async function connect() {
 }
 
 export async function loadSettings() {
-    const storedSettings = JSON.parse(storage.getItem(SETTINGS_KEY))
+    const storedSettings = JSON.parse(storage.getItem(SETTINGS_KEY)) ?? DEFAULT_SETTINGS
     console.log(`Loaded settings: `, storedSettings)
     displaySettings(storedSettings)
     return Promise.resolve(storedSettings)
 }
 
 export async function saveSettings(newSettings) {
-    settings = newSettings
-    storage.setItem(SETTINGS_KEY, JSON.stringify(settings))
-    await connectToOBS(newSettings.obs)
-    log('Connected to OBS!')
+    disconnectFromOBS(settings.obs)
+    settings.obs = {...newSettings}
+    storage.setItem(SETTINGS_KEY, JSON.stringify(settings.obs))
+    try {
+        await connectToOBS(settings.obs)
+        log('Connected to OBS!')
+    } catch (obsError) {
+        const error = new Error(
+            `There was a problem connecting to OBS: ${obsError.code} ${obsError.description}`
+        )
+        displayError(error)
+    }
 }
 
 export async function saveRedemptionEvent(redemption, override) {
@@ -68,7 +92,7 @@ export async function saveRedemptionEvent(redemption, override) {
 }
 
 export async function loadRedemptionEvents() {
-    const storedItems = JSON.parse(storage.getItem(REDEMPTIONS_KEY))
+    const storedItems = JSON.parse(storage.getItem(REDEMPTIONS_KEY)) ?? {}
     storedItems[demoEvent.redemptionName] = demoEvent
     console.log(`Loaded redemptions: `, storedItems)
     return Promise.resolve(storedItems)
@@ -82,6 +106,10 @@ async function connectToOBS(obs) {
     log('OBS integration enabled. Attempting connection...')
     obs.client = new OBSWebSocket()
     return obs.client.connect(settings.obs)
+}
+
+async function disconnectFromOBS(obs){
+    obs.client.disconnect()
 }
 
 // used handle the redemption event, accepts jquery object
@@ -166,18 +194,6 @@ async function executeCommandChain(redemptionData) {
     console.log('finished execution chain')
 
     return true
-}
-
-const commands = {
-    SetCurrentScene: config => {
-        return settings.obs.client.send('SetCurrentScene', config)
-    },
-    Wait: config => {
-        return delay(config.timeInMs)
-    },
-    SetSourceVisibility: config => {
-        return settings.obs.client.send('SetSceneItemProperties', {visible: config.visibility})
-    }
 }
 
 function addToCooldown(redemptionData) {
