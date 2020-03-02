@@ -1,4 +1,4 @@
-# Channel Points API
+# Better Points
 
 ## Install web-ext
 Use `npm install --global web-ext` to get the web-ext helper
@@ -15,10 +15,14 @@ Example:
     }
   },
 ```
-Use `web-ext run` in a terminal within the root folder of the project to launch the extension
 
 ## NPM
-Make sure to run `npm install` to get dev dependancies
+Make sure to run `npm install` to get dev dependencies
+
+## Dev
+Use `npm run dev` to run the rollup build script and watch for changes
+web-ext will also run and launch a browser instance from your profile
+Unfortunately web-ext does not properly reload the extension when changes are made so you must refresh the page
 
 ## Code Style
 Using VSCode install the ESLint and Prettier(optional) plugin

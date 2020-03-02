@@ -1,0 +1,12 @@
+
+
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Indentation override for all JS under lib directory
+[*.js, *.css, *.svelte]
+indent_style = space
+indent_size = 4
+

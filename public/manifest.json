@@ -1,0 +1,21 @@
+{
+  "manifest_version": 2,
+  "name": "Better Points",
+  "version": "1.0",
+  "description": "Control OBS with Twitch Channel Point redemption's.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.twitch.tv/popout/*/reward-queue*"
+      ],
+      "js": [
+        "jquery-3.4.1.min.js",
+        "obs-websocket.min.js",
+        "content-script.js"
+      ],
+      "css": [
+        "app.css"
+      ]
+    }
+  ]
+}

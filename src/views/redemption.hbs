@@ -1,0 +1,19 @@
+<div class="redemption-container">
+    <button type="button" id="redemption-edit-button">Edit Redemption Event</button>
+    <button type="button" id="redemption-delete-button">Delete Redemption Event</button>
+    <div><h4>{{redemptionName}}</h4></div>
+    <div>cooldown: {{redemption.cooldownInSeconds}}</div>
+    <div>hold: {{redemption.hold}}</div>
+    <div>start scene: {{redemption.startScene}}</div>
+    <div>
+        <div>commands: </div>
+        {{#each redemption.commands}}
+        <div>
+            - {{this.prettyName}}:
+            {{#each this.config}}
+                {{this}}
+            {{/each}}
+        </div>
+        {{/each}}
+    </div>
+</div>
